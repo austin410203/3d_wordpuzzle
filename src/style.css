@@ -139,3 +139,21 @@ body.touch #dlg-choices button { font-size: 13px; padding: 3px 8px; }
 body.touch #fishing { top: 10%; width: min(320px, 60vw); padding: 6px 10px; } body.touch #fish-title { font-size: 13px; margin-bottom: 4px; } body.touch #fish-hint { font-size: 11px; }
 body.touch.dlg-open #stick, body.touch.dlg-open #tbtn-b, body.touch.dlg-open #tbtn-m { opacity: .25; }
 @media (orientation: portrait) { body.touch #dialog { width: 94vw; bottom: 130px; } body.touch #goal { max-width: 50vw; } body.touch #prompt { bottom: 118px; } }
+
+/* ---------- floating joystick + safe areas (landscape phones have gesture zones at the edges) ---------- */
+#stickzone { position: absolute; left: 0; bottom: 0; width: 46%; height: 62%; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
+body.touch #stick { pointer-events: none; left: calc(env(safe-area-inset-left, 0px) + 26px); bottom: calc(env(safe-area-inset-bottom, 0px) + 26px); opacity: .55; transition: opacity .15s; }
+body.touch #stick.on { opacity: 1; transition: none; }
+body.touch .tb { right: calc(env(safe-area-inset-right, 0px) + 28px); bottom: calc(env(safe-area-inset-bottom, 0px) + 34px); -webkit-tap-highlight-color: transparent; touch-action: none; user-select: none; -webkit-user-select: none; }
+body.touch .tb::after { content: ''; position: absolute; inset: -14px; border-radius: 50%; }
+body.touch .tb.down { background: rgba(243,230,200,.85); transform: scale(.94); }
+body.touch #tbtn-b { right: calc(env(safe-area-inset-right, 0px) + 98px); bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); }
+body.touch #tbtn-m { right: calc(env(safe-area-inset-right, 0px) + 30px); top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: auto; }
+body.touch #goal { left: calc(env(safe-area-inset-left, 0px) + 8px); }
+body.touch #inv { left: calc(env(safe-area-inset-left, 0px) + 8px); }
+body.touch #counters { right: calc(env(safe-area-inset-right, 0px) + 78px); }
+body:not(.playing) #touch, body.journal-open #touch { display: none !important; }
+body.dlg-open #stickzone { display: none; }
+
+.jfoot { display: flex; justify-content: space-between; align-items: center; }
+#jclose { font: inherit; font-size: 15px; padding: 4px 14px; background: var(--ink); color: var(--paper); border: 2px solid var(--edge); cursor: pointer; }

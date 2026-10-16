@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>楓嶺 · 回音鐘 Maple Ridge</title>
   <meta name="description" content="像素風解謎探險:回到爺爺的楓嶺,推石、釣魚、修水車、點古燈,登頂敲響回音鐘。" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -62,7 +62,7 @@
       <div class="jpage hidden" id="jp-items"></div>
       <div class="jpage hidden" id="jp-map"><canvas id="mapcv" width="448" height="384"></canvas></div>
       <div class="jpage hidden" id="jp-opts"></div>
-      <div class="jfoot">Tab / J 關閉 · Esc 暫停</div>
+      <div class="jfoot"><button id="jclose">✕ 關閉手帳</button> <span>Tab / J 關閉</span></div>
     </div>
   </div>
 
@@ -84,6 +84,7 @@
   <div id="ending" class="hidden"><div id="ending-inner"></div></div>
 
   <div id="touch" class="hidden">
+    <div id="stickzone"></div>
     <div id="stick"><div id="knob"></div></div>
     <div id="tbtn-a" class="tb">E</div>
     <div id="tbtn-b" class="tb small">跑</div>

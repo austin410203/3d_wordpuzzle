@@ -51,7 +51,7 @@ export class Game {
     this.ui.refreshHUD();
     if (this.input.touch) {
       this.$('touch').classList.remove('hidden'); document.body.classList.add('touch');
-      this.input.bindTouch(this.$('stick'), this.$('knob'), this.$('tbtn-a'), this.$('tbtn-b'), this.$('tbtn-m'));
+      this.input.bindTouch(this.$('stickzone'), this.$('stick'), this.$('knob'), this.$('tbtn-a'), this.$('tbtn-b'), this.$('tbtn-m'));
     }
   }
 
@@ -304,7 +304,7 @@ export class Game {
     addI({ pos: V(51.2 * S, 0, 31.0 * S + 1.0), r: 1.3, label: () => '小神社', use: () => this.ui.say([['小禾', '小小的神社,供著一顆松果和一張褪色的照片——照片裡是年輕的爺爺,和一個笑得很大聲的女孩。']], 'me') });
     // ---------- falling leaves particles
     {
-      const n = 160, g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+      const n = 90, g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
       const pal = [[0.9, 0.42, 0.12], [0.85, 0.25, 0.1], [0.95, 0.7, 0.2], [0.75, 0.35, 0.1]];
       for (let i = 0; i < n; i++) { const c = pal[i % 4]; col.set(c, i * 3); }
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -952,6 +952,7 @@ export class Game {
       await sleep(700);
     }
     this.started = true;
+    document.body.classList.add('playing');
     this.inCave = this.player.pos.x > 250;
     $('hud').classList.remove('hidden');
     this.cutscene = false;
@@ -1153,15 +1154,28 @@ export class Game {
     if (this.bell.swing > 0) { this.bell.swing = Math.max(0, this.bell.swing - dt * 0.18); this.bell.m.userData.bell.rotation.x = Math.sin(t * 4) * 0.35 * this.bell.swing; }
     // ghost
     if (this.ghost) { this.ghost.t += dt; animateCharacter(this.ghost.m, dt, 0, this.ghost.t > 2 && this.ghost.t < 6 ? 'cheer' : 'idle'); if (this.ghost.t > 14) { this.ghost.m.traverse(o => { if (o.isMesh) o.material.opacity = Math.max(0, 0.85 - (this.ghost.t - 14) * 0.3); }); if (this.ghost.t > 17) { this.scene.remove(this.ghost.m); this.ghost = null; } } }
-    // falling leaf particles around the camera
+    // falling leaves: each leaf drops from a canopy that is on screen and lands under that tree
     const pa = this.particles, pos = pa.pts.geometry.attributes.position, hv = this.pr.viewHalf();
     pa.pts.visible = !this.inCave;
+    pa.pick = (pa.pick || 0) - dt;
+    if (pa.pick <= 0 || !pa.near) {
+      pa.pick = 0.5;
+      const cx = this.cam.x, cz = this.cam.z, mx = hv.x + 2, mz = hv.z + 4;
+      pa.near = w.canopies.filter(tr => Math.abs(tr.x - cx) < mx && Math.abs(tr.z - cz) < mz && ['orange', 'amber', 'red'].includes(tr.kind) || (Math.abs(tr.x - cx) < mx && Math.abs(tr.z - cz) < mz && Math.random() < 0.25));
+    }
     for (let i = 0; i < pa.n; i++) {
       const s = pa.seeds[i];
-      s.y -= dt * 0.035 * s.s; if (s.y < 0) { s.y = 1; s.x = Math.random(); s.z = Math.random(); }
-      const x = this.cam.x + (s.x - 0.5) * hv.x * 2.4 + Math.sin(t * 0.8 * s.s + i) * 0.6;
-      const z = this.cam.z + (s.z - 0.5) * hv.z * 2.4;
-      pos.setXYZ(i, x, this.cam.y + s.y * 14 - 2, z);
+      if (!s.tree || s.y <= s.ground) {
+        s.tree = pa.near.length && Math.random() < 0.6 ? pa.near[Math.floor(Math.random() * pa.near.length)] : null;
+        if (!s.tree) { s.y = -999; s.ground = -998; pos.setXYZ(i, 0, -999, 0); continue; }
+        const tr = s.tree, a = Math.random() * 6.28, r = Math.random() * 1.3 * tr.s;
+        s.ox = Math.cos(a) * r; s.oz = Math.sin(a) * r * 0.8;
+        s.ground = tr.y + 0.02; s.y = tr.y + (1.4 + Math.random() * 1.6) * tr.s;
+        s.vy = 0.35 + Math.random() * 0.35; s.ph = Math.random() * 6.28; s.drift = (Math.random() - 0.5) * 0.5;
+      }
+      s.y -= dt * s.vy; s.ox += dt * s.drift;
+      const sw = Math.sin(t * 2.2 + s.ph) * 0.35;
+      pos.setXYZ(i, s.tree.x + s.ox + sw, Math.max(s.ground, s.y), s.tree.z + s.oz);
     }
     pos.needsUpdate = true;
     // cave lights

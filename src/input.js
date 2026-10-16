@@ -14,26 +14,63 @@ export class Input {
     addEventListener('blur', () => this.keys.clear());
     this.touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || location.search.includes('touch');
   }
-  bindTouch(stick, knob, btnA, btnB, btnM) {
-    let id = null, cx = 0, cy = 0;
+  // Floating joystick: touch anywhere in the left zone, the stick appears under the finger.
+  // Uses Touch Events when available (most reliable on iOS/Android), pointer events otherwise.
+  bindTouch(zone, stick, knob, btnA, btnB, btnM) {
     const R = 34;
-    stick.addEventListener('pointerdown', e => { id = e.pointerId; const r = stick.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; stick.setPointerCapture(id); move(e); });
-    const move = e => {
-      if (e.pointerId !== id) return;
-      let dx = e.clientX - cx, dy = e.clientY - cy; const L = Math.hypot(dx, dy);
+    let sid = null, cx = 0, cy = 0;
+    const held = new Map(); // touch/pointer id -> key code
+    const place = (x, y) => {
+      const r = stick.offsetWidth / 2 || 48;
+      cx = Math.min(innerWidth - r - 4, Math.max(r + 4, x)); cy = Math.min(innerHeight - r - 4, Math.max(r + 4, y));
+      stick.style.left = (cx - r) + 'px'; stick.style.top = (cy - r) + 'px'; stick.style.bottom = 'auto';
+      stick.classList.add('on');
+    };
+    const steer = (x, y) => {
+      let dx = x - cx, dy = y - cy; const L = Math.hypot(dx, dy);
       if (L > R) { dx *= R / L; dy *= R / L; }
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
-      this.joy.x = dx / R; this.joy.y = dy / R; this.joy.active = true;
+      const m = Math.hypot(dx, dy) / R;
+      this.joy.x = m < 0.15 ? 0 : dx / R; this.joy.y = m < 0.15 ? 0 : dy / R; this.joy.active = true;
     };
-    stick.addEventListener('pointermove', move);
-    const end = e => { if (e.pointerId !== id) return; id = null; knob.style.transform = ''; this.joy.x = this.joy.y = 0; this.joy.active = false; };
-    stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
-    const tap = (el, code) => {
-      el.addEventListener('pointerdown', e => { e.preventDefault(); this.pressed.add(code); this.keys.add(code); });
-      el.addEventListener('pointerup', () => this.keys.delete(code));
-      el.addEventListener('pointerleave', () => this.keys.delete(code));
+    const release = () => {
+      sid = null; knob.style.transform = ''; this.joy.x = this.joy.y = 0; this.joy.active = false;
+      stick.style.left = stick.style.top = stick.style.bottom = ''; stick.classList.remove('on');
     };
-    tap(btnA, 'KeyE'); tap(btnB, 'ShiftLeft'); tap(btnM, 'Tab');
+    const press = (id, code, el) => { held.set(id, code); this.pressed.add(code); this.keys.add(code); el.classList.add('down'); };
+    const unpress = (id) => {
+      const code = held.get(id); if (!code) return; held.delete(id);
+      if (![...held.values()].includes(code)) this.keys.delete(code);
+      for (const el of [btnA, btnB, btnM]) if (el.dataset.code === code) el.classList.remove('down');
+    };
+    btnA.dataset.code = 'KeyE'; btnB.dataset.code = 'ShiftLeft'; btnM.dataset.code = 'Tab';
+    const opt = { passive: false };
+    if ('ontouchstart' in window || location.search.includes('touchev')) {
+      zone.addEventListener('touchstart', e => {
+        e.preventDefault();
+        for (const t of e.changedTouches) if (sid === null) { sid = t.identifier; place(t.clientX, t.clientY); steer(t.clientX, t.clientY); }
+      }, opt);
+      const tmove = e => { for (const t of e.changedTouches) if (t.identifier === sid) { e.preventDefault(); steer(t.clientX, t.clientY); } };
+      const tend = e => { for (const t of e.changedTouches) { if (t.identifier === sid) release(); unpress(t.identifier); } };
+      addEventListener('touchmove', tmove, opt);
+      addEventListener('touchend', tend); addEventListener('touchcancel', tend);
+      for (const el of [btnA, btnB, btnM]) el.addEventListener('touchstart', e => {
+        e.preventDefault(); e.stopPropagation();
+        for (const t of e.changedTouches) press(t.identifier, el.dataset.code, el);
+      }, opt);
+      // safety net: when no finger is on the screen nothing may stay held
+      addEventListener('touchend', e => { if (e.touches.length === 0) { release(); for (const id of [...held.keys()]) unpress(id); } });
+    } else {
+      zone.addEventListener('pointerdown', e => { if (sid !== null) return; sid = e.pointerId; zone.setPointerCapture(sid); place(e.clientX, e.clientY); steer(e.clientX, e.clientY); });
+      zone.addEventListener('pointermove', e => { if (e.pointerId === sid) steer(e.clientX, e.clientY); });
+      const pend = e => { if (e.pointerId === sid) release(); };
+      zone.addEventListener('pointerup', pend); zone.addEventListener('pointercancel', pend); zone.addEventListener('lostpointercapture', pend);
+      for (const el of [btnA, btnB, btnM]) {
+        el.addEventListener('pointerdown', e => { e.preventDefault(); press('p' + e.pointerId, el.dataset.code, el); });
+        for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, e => unpress('p' + e.pointerId));
+      }
+    }
+    addEventListener('blur', () => { release(); for (const id of [...held.keys()]) unpress(id); });
   }
   down(...codes) { return codes.some(c => this.keys.has(c)); }
   hit(...codes) { return codes.some(c => this.pressed.has(c)); }

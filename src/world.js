@@ -366,6 +366,7 @@ export function buildWorld(scene, gradient, U) {
   for (const [x, z] of [[4.8, 12.8], [15.6, 15.8], [6.4, 15.6]]) put(P.crystal(0x9ad8c8), x, z, x, 0);
 
   return {
+    canopies: placed.filter(t => !t.kind.startsWith('bush') && t.kind !== 'pine'),
     scene, main, cave, caveData, g, colliders, dockY: dockY + 0.07, heightAt, T, paths, pathDist, houses, decor, noiseTex, waterMat,
     bounds: { x0: 4.3, x1: MAP.COLS * S - 4, z0: 3.4, z1: MAP.ROWS * S - 0.6 }, PAD,
     put,

@@ -38,6 +38,7 @@ export class UI {
     this.portraitCache = {};
     this.toastQ = [];
     document.querySelectorAll('.jtabs button').forEach(b => b.addEventListener('click', () => this.tab(b.dataset.tab)));
+    $('jclose').addEventListener('click', () => this.toggleJournal(false));
     $('dialog').addEventListener('pointerdown', (e) => { if (e.target.tagName !== 'BUTTON') this.advance(); });
   }
   busy() { return !!this.dlg || this.journalOpen || this.g.fishing || this.g.cutscene; }
@@ -212,6 +213,7 @@ export class UI {
   toggleJournal(force) {
     this.journalOpen = force ?? !this.journalOpen;
     $('journal').classList.toggle('hidden', !this.journalOpen);
+    document.body.classList.toggle('journal-open', this.journalOpen);
     if (this.journalOpen) { this.render(this.curTab || 'quest'); this.g.audio.blip(); }
   }
   tab(t) {
