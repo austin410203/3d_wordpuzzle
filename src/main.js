@@ -62,11 +62,15 @@ async function boot() {
   game.frame = frame;
   const loop = (now) => {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    pr.checkSize();
     frame(dt);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
-  addEventListener('resize', () => pr.resize());
+  const later = () => { pr.resize(); setTimeout(() => pr.resize(), 250); setTimeout(() => pr.resize(), 700); };
+  addEventListener('resize', later);
+  addEventListener('orientationchange', later);
+  window.visualViewport?.addEventListener('resize', later);
   game.showTitle();
   if (location.search.includes('debug')) import('./debug.js').then(m => m.installDebug(game));
 }

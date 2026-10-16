@@ -93,8 +93,21 @@ export class PixelRenderer {
     this.resize();
   }
 
+  // real visible size: after a phone rotation innerWidth/innerHeight can lag behind, so use the
+  // largest consistent reading and re-check every frame (cheap) instead of trusting one event
+  viewSize() {
+    const vv = window.visualViewport;
+    const w = Math.round(vv ? vv.width * (vv.scale || 1) : window.innerWidth) || document.documentElement.clientWidth;
+    const h = Math.round(vv ? vv.height * (vv.scale || 1) : window.innerHeight) || document.documentElement.clientHeight;
+    return [Math.max(1, w), Math.max(1, h)];
+  }
+  checkSize() {
+    const [w, h] = this.viewSize();
+    if (w !== this.cssW || h !== this.cssH) this.resize();
+  }
   resize() {
-    const w = window.innerWidth, h = window.innerHeight;
+    const [w, h] = this.viewSize();
+    this.cssW = w; this.cssH = h;
     this.ps = Math.max(1, Math.round(h / 330));
     if (w < 700) this.ps = Math.max(1, Math.round(h / 300));
     if (h > w) this.ps = Math.max(1, Math.round(w / 300));

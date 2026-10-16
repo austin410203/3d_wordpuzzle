@@ -3,8 +3,8 @@
   --font: 'DotGothic16', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: #1c2414; color: var(--ink); font-family: var(--font); -webkit-user-select: none; user-select: none; touch-action: none; }
-canvas#c { position: fixed; inset: 0; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+html, body { margin: 0; width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #1c2414; color: var(--ink); font-family: var(--font); -webkit-user-select: none; user-select: none; touch-action: none; }
+canvas#c { position: fixed; left: 0; top: 0; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .hidden { display: none !important; }
 
 /* pixel frame used by panels */
@@ -182,3 +182,4 @@ body.touch #counters { right: calc(env(safe-area-inset-right, 0px) + 126px); }
 .ctr img, .slot img, .bslot img, .bag-info img.big, .bag-pet img { image-rendering: auto !important; }
 .bag-info img.big { width: 110px; }
 .bag-pet img { width: 26px; }
+body.touch #compass { top: calc(env(safe-area-inset-top, 0px) + 40px); right: calc(env(safe-area-inset-right, 0px) + 132px); }
