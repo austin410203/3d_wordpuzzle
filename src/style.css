@@ -178,3 +178,4 @@ body.touch #counters { right: calc(env(safe-area-inset-right, 0px) + 126px); }
 .slot img { image-rendering: pixelated; }
 #portrait-wrap { background: #c9b48a; overflow: hidden; } #portrait { image-rendering: pixelated; }
 .bag-pet { flex-basis: 100%; padding: 6px 10px; background: #fbf3df; border: 2px solid var(--edge); font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .bag-pet img { image-rendering: pixelated; } .bag-pet .hearts { color: #e0405a; letter-spacing: 2px; } .bag-pet small { color: var(--ink2); font-size: 12px; }
+#portrait { image-rendering: auto !important; border-radius: 2px; }

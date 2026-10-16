@@ -56,10 +56,9 @@ export class UI {
   }
   drawPortrait(id) {
     const cv = $('portrait'), ctx = cv.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    const bg = { player: ['#cfe0b0', '#b8cc94'], amei: ['#e8d0e8', '#d4b8d8'], wang: ['#c8dce8', '#b0c8d8'], chen: ['#ecd0b0', '#dcb890'], song: ['#e8e0c8', '#d4c8a8'], yu: ['#f0e0b0', '#e0c88c'], grandpa: ['#e0d8c0', '#cfc4a0'], cat: ['#f0d8c0', '#e0c0a0'], pet: ['#f2dcb8', '#e2c494'] }[id] || ['#c9b48a', '#b8a078'];
-    for (let y = 0; y < 48; y++) { ctx.fillStyle = bg[(y >> 2) % 2 ? 1 : 0]; ctx.fillRect(0, y, 48, 1); }
-    if (!id || !hasPortrait(id)) return;
+    if (cv.width !== 192) { cv.width = cv.height = 192; }
+    ctx.imageSmoothingEnabled = true;
+    if (!id || !hasPortrait(id)) { ctx.fillStyle = '#e8dcc0'; ctx.fillRect(0, 0, 192, 192); return; }
     ctx.drawImage(portraitURL(id), 0, 0);
   }
 
