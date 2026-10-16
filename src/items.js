@@ -63,8 +63,12 @@ const ART = {
 };
 const FISH_COL = { '鯽魚': ['#6a7a5a', '#9aa880'], '紅尾鯉': ['#a8402a', '#e8704a'], '楓葉鯰': ['#6a4a2a', '#b8803a'], '溪哥': ['#4a7a9a', '#8ac0d8'], '高山鱒': ['#5a7a6a', '#c88aa0'], '金鱗魚': ['#a87a10', '#ffd040'] };
 
+// Gemini-generated icon art (assets/items/*.png); code-drawn pixel icons are the fallback
+const ASSET = { '鯽魚': 'fish_jiyu', '紅尾鯉': 'fish_koi', '楓葉鯰': 'fish_catfish', '溪哥': 'fish_minnow', '高山鱒': 'fish_trout', '金鱗魚': 'fish_gold', fish: 'fish_jiyu' };
+const HAS = new Set(['gloves', 'rod', 'rope', 'lantern', 'hammer', 'whistle', 'key', 'truckKey', 'pinecone', 'berry', 'mushroom', 'treat', 'shoes', 'compass', 'scope', 'watch', 'leaf', 'postcard', 'sketch']);
 const cache = {};
 export function icon(id, scale = 3) {
+  if (HAS.has(id) || ASSET[id]) return `./assets/items/${ASSET[id] || id}.png`;
   const k = id + '@' + scale;
   if (cache[k]) return cache[k];
   let a = ART[id];
