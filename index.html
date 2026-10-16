@@ -54,15 +54,17 @@
     <div class="jbook">
       <div class="jtabs">
         <button data-tab="quest" class="on">旅程</button>
+        <button data-tab="bag">背包</button>
         <button data-tab="items">收藏</button>
         <button data-tab="map">地圖</button>
         <button data-tab="opts">設定</button>
       </div>
       <div class="jpage" id="jp-quest"></div>
+      <div class="jpage hidden" id="jp-bag"></div>
       <div class="jpage hidden" id="jp-items"></div>
       <div class="jpage hidden" id="jp-map"><canvas id="mapcv" width="448" height="384"></canvas></div>
       <div class="jpage hidden" id="jp-opts"></div>
-      <div class="jfoot"><button id="jclose">✕ 關閉手帳</button> <span>Tab / J 關閉</span></div>
+      <div class="jfoot"><button id="jclose">✕ 關閉手帳</button> <span>Tab/M 地圖 · B 背包 · J 旅程</span></div>
     </div>
   </div>
 
@@ -75,7 +77,7 @@
         <button id="btn-continue" class="hidden">繼續旅程</button>
         <button id="btn-new">新的旅程</button>
       </div>
-      <div class="tkeys"><b>WASD/方向鍵</b> 移動 · <b>E/空白</b> 互動、對話、推 · <b>Shift</b> 奔跑 · <b>Tab/J</b> 手帳 · <b>R</b> 重置謎題</div>
+      <div class="tkeys"><b>WASD/方向鍵</b> 移動 · <b>E/空白</b> 互動、對話、推 · <b>Shift</b> 奔跑 · <b>Tab/M</b> 地圖 · <b>B</b> 背包 · <b>J</b> 手帳 · <b>R</b> 重置謎題</div>
     </div>
   </div>
 
@@ -88,7 +90,8 @@
     <div id="stick"><div id="knob"></div></div>
     <div id="tbtn-a" class="tb">E</div>
     <div id="tbtn-b" class="tb small">跑</div>
-    <div id="tbtn-m" class="tb small">帳</div>
+    <div id="tbtn-m" class="tb small">圖</div>
+    <div id="tbtn-bag" class="tb small">包</div>
   </div>
 
   <script type="module" src="./src/main.js"></script>

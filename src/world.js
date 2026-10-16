@@ -88,7 +88,8 @@ export function buildWorld(scene, gradient, U) {
   add(cave.cliffGeo, new THREE.MeshToonMaterial({ map: cliffTex, vertexColors: true, gradientMap: gradient, color: 0x8a7f96 }), true);
 
   const colliders = new Colliders();
-  const T = (x, z) => (x >= MAP.CAVE_OX - 10 ? cave : main);
+  const flat = { W: [0], ST: [0], cellIdx: () => 0, heightAt: () => 0, waterSurfaceAt: () => null, isWater: () => false, levelAt: () => 0 };
+  const T = (x, z) => (x >= 490 ? flat : x >= MAP.CAVE_OX - 10 ? cave : main);
   const heightAt = (x, z) => T(x, z).heightAt(x, z);
 
   // ---- exclusion helpers

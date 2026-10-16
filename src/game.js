@@ -8,6 +8,12 @@ import { UI } from './ui.js';
 import { Audio } from './audio.js';
 import { talk, INTRO, AREAS, POSTCARD_TEXT, FISH, UPGRADES, SIGNS, ENDING, NAMES } from './story.js';
 import { PPU, PITCH } from './render.js';
+import { buildInteriors } from './interiors.js';
+import { Pet } from './pet.js';
+import { Truck } from './vehicle.js';
+import { ITEMS } from './items.js';
+import { mulberry } from './noise.js';
+import { ROOM_TEXT, PET } from './story.js';
 
 const S = MAP.CELL;
 const SAVE_KEY = 'mapleRidgeSave';
@@ -43,6 +49,9 @@ export class Game {
     this.flags = this.state.flags;
     try { const st = JSON.parse(localStorage.getItem('mapleRidgeSettings') || '{}'); for (const k of ['master', 'music', 'sfx']) if (st[k] != null) this.audio.vol[k] = st[k]; } catch { }
     this.buildEntities();
+    if (!this.state.bagFish) { this.state.bagFish = { ...this.state.fish }; let fed = this.state.fedFish || 0; for (const k of Object.keys(this.state.bagFish)) { const t = Math.min(fed, this.state.bagFish[k]); this.state.bagFish[k] -= t; fed -= t; } }
+    this.state.mats ||= {}; this.state.dug ||= {}; this.forageAt = {};
+    this.buildCompanions();
     this.applyState();
     const sp = this.state.pos || [MAP.SPAWN.x * S, MAP.SPAWN.z * S];
     this.player.place(sp[0], sp[1], Math.PI);
@@ -51,7 +60,7 @@ export class Game {
     this.ui.refreshHUD();
     if (this.input.touch) {
       this.$('touch').classList.remove('hidden'); document.body.classList.add('touch');
-      this.input.bindTouch(this.$('stickzone'), this.$('stick'), this.$('knob'), this.$('tbtn-a'), this.$('tbtn-b'), this.$('tbtn-m'));
+      this.input.bindTouch(this.$('stickzone'), this.$('stick'), this.$('knob'), this.$('tbtn-a'), this.$('tbtn-b'), this.$('tbtn-m'), this.$('tbtn-bag'));
     }
   }
 
@@ -70,9 +79,9 @@ export class Game {
   setGoal(k) { this.state.goal = k; this.ui.refreshHUD(); this.save(); }
   toast(t, gold) { this.ui.toast(t, gold); }
   rand(n) { return Math.floor(Math.random() * n); }
-  fishCount() { return Object.values(this.state.fish).reduce((a, b) => a + b, 0) - (this.state.fedFish || 0); }
+  fishCount() { return Object.values(this.state.bagFish || {}).reduce((a, b) => a + b, 0); }
   catFollowing() { return !!this.flags.catFollow && !this.flags.catHome; }
-  feedCat() { this.state.fedFish = (this.state.fedFish || 0) + 1; this.flags.catFollow = 1; this.audio.meow(); this.setGoal('catHome'); }
+  feedCat() { const k = Object.keys(this.state.bagFish).find(k => this.state.bagFish[k] > 0); if (k) this.state.bagFish[k]--; this.flags.catFollow = 1; this.audio.meow(); this.setGoal('catHome'); }
   catGoHome() { this.flags.catHome = 1; this.flags.catFollow = 0; const c = this.npcs.cat; c.home = V(19.0 * S, 0, 41.0 * S); this.audio.meow(); }
   completion() {
     const s = this.state;
@@ -87,6 +96,14 @@ export class Game {
     });
   }
   uiBusy() { return this.ui.busy(); }
+  // where the player is on the overworld map (inside a cave/house → its entrance)
+  areaName() { if (this.curRoom && this.player.pos.x >= 500) return this.curRoom.name; return AREAS[this.areaKey]?.[0] || ''; }
+  outsidePos() {
+    const p = this.player.pos;
+    if (p.x >= 500 && this.curRoom) return this.curRoom.outside;
+    if (p.x > 250 && p.x < 490) return V(MAP.CAVE_DOOR.x * S, 0, MAP.CAVE_DOOR.z * S);
+    return p;
+  }
   // after a dialogue / fishing / cutscene: wait for the action key to be released + a short pause
   blockInteract(ms = 450) {
     this.interactAfter = performance.now() + ms; this.needRelease = true;
@@ -105,6 +122,7 @@ export class Game {
     if (this.player.pos.x < 250 && !this.player.lock) s.pos = [this.player.pos.x, this.player.pos.z];
     s.boulders = {}; for (const b of this.boulders) s.boulders[b.id] = [b.c, b.r, b.sunk ? 1 : 0];
     s.filled = [...this.filled];
+    if (this.truck) s.truck = [this.truck.pos.x, this.truck.pos.z, this.truck.heading];
     localStorage.setItem(SAVE_KEY, JSON.stringify(s));
   }
 
@@ -140,6 +158,7 @@ export class Game {
         this.birds.push({ m: b, home: b.position.clone(), fly: 0, vel: V(0, 0, 0), t: Math.random() * 5 });
       }
     }
+    this.buildRooms(addI);
     // ---------- mailbox / postcards
     this.cards = [];
     const env = () => {
@@ -149,12 +168,14 @@ export class Game {
       return g;
     };
     for (const p of MAP.POSTCARDS) {
-      const x = p.x * S, z = p.z * S;
+      let x = p.x * S, z = p.z * S;
+      const inRoom = { p3: 'hut2', p4: 'hut3' }[p.id];
+      if (inRoom) { const R = this.rooms[inRoom]; x = R.ox + R.cardAt[0]; z = R.oz + R.cardAt[1]; }
       let mesh = null;
-      if (!p.inMailbox) { mesh = env(); mesh.position.set(x, H(x, z) + 0.7, z); mesh.layers.enable(3); sc.add(mesh); }
-      const card = { id: p.id, x, z, mesh };
+      if (!p.inMailbox) { mesh = env(); mesh.position.set(x, H(x, z) + (inRoom ? 1.0 : 0.7), z); mesh.layers.enable(3); sc.add(mesh); }
+      const card = { id: p.id, x, z, mesh, inRoom };
       this.cards.push(card);
-      addI({ get pos() { return V(x, H(x, z), z); }, r: p.inMailbox ? 1.9 : 1.4, label: () => p.inMailbox ? '打開信箱' : '撿起明信片', on: () => !this.state.postcards[p.id], use: () => this.readCard(p.id) });
+      addI({ get pos() { return V(x, H(x, z), z); }, r: p.inMailbox ? 1.9 : inRoom ? 1.3 : 1.4, label: () => p.inMailbox ? '打開信箱' : '撿起明信片', on: () => !this.state.postcards[p.id], use: () => this.readCard(p.id) });
     }
     // ---------- golden leaves
     const leafShape = new THREE.Shape();
@@ -169,11 +190,6 @@ export class Game {
       return { i, x, z, m, y0: H(x, z) + 0.8 };
     });
     // ---------- tool shed
-    const shed = MAP.HOUSES.find(h => h.id === 'shed');
-    addI({ pos: V(shed.x * S, 0, shed.z * S + shed.d / 2 + 0.5), r: 1.4, label: () => this.has('gloves') ? '工具棚(空的)' : '打開工具棚', use: () => this.openShed() });
-    addI({ pos: V(MAP.HOUSES[0].x * S - 0.4, 0, MAP.HOUSES[0].z * S + 1.9), r: 1.3, label: () => '爺爺的家', use: () => this.ui.say(this.flags.rang
-      ? [['小禾', '門框上還刻著我小時候的身高線。最上面那條旁邊,多了一行小字:「長得比我高了。」']]
-      : [['小禾', '屋子裡還有爺爺的味道:木頭、茶,還有一點點樟腦丸。'], ['小禾', '先去看看信箱吧。']], 'me') });
     // ---------- signs
     const signs = [['楓嶺村', 17.2, 44.2], ['步道 →', 19.4, 39.3], ['伐木營地', 32.6, 32.6], ['磨坊', 37.4, 24.4], ['古燈林', 17.6, 13.0], ['山頂 · 回音鐘', 14.2, 6.0]];
     for (const [t, mx, mz] of signs) addI({ pos: V(mx * S, 0, mz * S), r: 1.2, label: () => '看告示牌', use: () => this.ui.say([['', SIGNS[t]]]) });
@@ -316,6 +332,167 @@ export class Game {
     this.bobber = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), P.M.fire); this.bobber.visible = false; sc.add(this.bobber);
   }
 
+  buildCompanions() {
+    const sc = this.scene, w = this.world;
+    // heart sprite for petting
+    const cv = document.createElement('canvas'); cv.width = 9; cv.height = 8; const c = cv.getContext('2d');
+    ['.rr...rr.', 'rRRr.rRRr', 'rRRRrRRRr', 'rRRRRRRRr', '.rRRRRRr.', '..rRRRr..', '...rRr...', '....r....'].forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') { c.fillStyle = ch === 'r' ? '#8a1a2a' : '#f0506a'; c.fillRect(x, y, 1, 1); } }));
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = tex.minFilter = THREE.NearestFilter; tex.colorSpace = THREE.SRGBColorSpace;
+    this.heartSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true })); this.heartSprite.scale.set(0.45, 0.4, 1); this.heartSprite.layers.set(3);
+    // pet
+    this.pet = new Pet(this);
+    const game = this;
+    this.inter.push({ get pos() { return game.pet.pos; }, r: 1.6, on: () => !this.truck?.driving, label: () => this.pet.label(), use: () => this.pet.interact() });
+    // truck
+    const tp = this.state.truck || [3.4 * S, 44.4 * S, 0];
+    this.truck = new Truck(this, tp[0], tp[1], tp[2]);
+    this.inter.push({ get pos() { return game.truck.pos; }, r: 2.3, on: () => !this.truck.driving, label: () => this.has('truckKey') ? '開「小藍」' : '藍色小貨車', use: () => this.enterTruck() });
+    // forage nodes: pine cones, berries, mushrooms near the trails (they grow back)
+    const r = mulberry(99), F = [];
+    for (let i = 0; i < 4000 && F.length < 44; i++) {
+      const x = 6 + r() * 98, z = 6 + r() * 88;
+      const d = w.pathDist(x, z);
+      if (d < 0.4 || d > 2.6 || w.main.isWater(x, z) || w.main.flatness(x, z, 0.4) > 0.2 || w.colliders.hit(x, z, 0.5)) continue;
+      if (F.some(f => Math.hypot(f.x - x, f.z - z) < 7)) continue;
+      const L = w.main.levelAt(x, z);
+      const kind = L >= 3 ? 'pinecone' : ['berry', 'mushroom', 'pinecone'][F.length % 3];
+      F.push({ i: F.length, x, z, kind });
+    }
+    const gm = P.M.leaf.gradientMap;
+    const berryMat = new THREE.MeshToonMaterial({ color: 0xb82a3a, gradientMap: gm }), capMat = new THREE.MeshToonMaterial({ color: 0xc23a26, gradientMap: gm }), bushMat = new THREE.MeshToonMaterial({ color: 0x4f7a2b, gradientMap: gm });
+    for (const f of F) {
+      const g = new THREE.Group();
+      if (f.kind === 'berry') { const bush = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), bushMat); bush.position.y = 0.22; bush.scale.y = 0.75; g.add(bush); for (let k = 0; k < 4; k++) { const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), berryMat); b.position.set(Math.cos(k * 1.7) * 0.24, 0.3 + (k % 2) * 0.1, Math.sin(k * 1.7) * 0.24); g.add(b); } }
+      else if (f.kind === 'mushroom') { for (let k = 0; k < 2; k++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.14, 5), P.M.white); st.position.set(k * 0.2, 0.07, k * 0.1); g.add(st); const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.05, 0.16, 6), capMat); cap.position.set(k * 0.2, 0.16, k * 0.1); cap.scale.setScalar(1 - k * 0.3); g.add(cap); } }
+      else { const pc = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.26, 6), P.M.wood); pc.rotation.z = 1.4; pc.position.y = 0.1; g.add(pc); }
+      g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+      g.position.set(f.x, w.heightAt(f.x, f.z), f.z); sc.add(g); f.m = g;
+    }
+    this.forage = F;
+    // dig spots (only the pet can find them)
+    const ds = [[6, 44], [24, 47], [44, 44], [8, 33], [26, 31], [40, 33], [14, 24], [30, 25], [8, 13], [28, 15], [18, 4], [36, 6]];
+    this.digSpots = ds.map(([x, z], i) => ({ i, x: x * S, z: z * S })).filter(d => !this.world.main.isWater(d.x, d.z));
+  }
+  firstFood() {
+    const s = this.state;
+    for (const id of ['treat', 'berry', 'mushroom', 'pinecone']) if ((s.mats[id] || 0) > 0) return { id, name: ITEMS[id].name, love: ITEMS[id].love };
+    const fk = Object.keys(s.bagFish || {}).find(k => s.bagFish[k] > 0);
+    return fk ? { id: fk, name: fk, love: 3, fish: true } : null;
+  }
+  consumeFood(f) { if (f.fish) this.state.bagFish[f.id]--; else this.state.mats[f.id]--; this.ui.refreshHUD(); }
+  useItem(sel) {
+    if (sel.it.use === 'whistle') return this.whistlePet();
+    if (sel.it.use === 'feed' && this.pet?.adopted) {
+      this.consumeFood({ id: sel.id, fish: !!sel.it.fish });
+      this.pet.love(sel.it.love || 1); this.pet.hearts(); this.audio.bark();
+      this.toast(`豆豆開心地吃掉了${sel.it.name}!`);
+    }
+  }
+  whistlePet() {
+    if (!this.pet?.adopted) return;
+    this.audio.dogWhistle();
+    const p = this.player;
+    setTimeout(() => { this.pet.warp(V(p.pos.x - Math.sin(p.face) * 1.2, 0, p.pos.z - Math.cos(p.face) * 1.2)); this.audio.bark(); }, 500);
+  }
+  digUp(spot) {
+    if (this.state.dug[spot.i]) return;
+    this.state.dug[spot.i] = 1;
+    const loot = ['treat', 'berry', 'mushroom', 'pinecone'][spot.i % 4];
+    this.audio.thunk(); this.addMat(loot, 2);
+    this.toast('豆豆挖出了寶物!', true);
+  }
+  async enterTruck() {
+    if (!this.has('truckKey')) return this.ui.say([['小禾', '爺爺的藍色小貨車「小藍」。車門鎖著——鑰匙大概在爺爺家裡。']], 'me');
+    const t = this.truck; t.driving = true; this.player.model.visible = false;
+    this.pr.zoom = 0.8; this.pr.updateFrustum();
+    this.audio.thunk(); this.quietHere();
+    if (!this.flags.drove) { this.flags.drove = 1; this.toast('開車:往哪推就往哪開 · Shift 加速 · H 喇叭 · E 下車'); }
+  }
+  exitTruck() {
+    const t = this.truck, p = this.player;
+    for (const side of [-1.6, 1.6, -2.4, 2.4]) {
+      const q = t.localToWorld(side, 0, 0);
+      if (!this.world.colliders.hit(q.x, q.z, 0.35, t.coll) && p.standable(q.x, q.z, t.pos.y)) {
+        t.driving = false; t.speed = 0; t.sync();
+        p.place(q.x, q.z, t.heading); p.model.visible = true;
+        this.pr.zoom = 1; this.pr.updateFrustum(); this.audio.engine(-1); this.audio.thunk(); this.quietHere(); this.save();
+        return;
+      }
+    }
+    this.toast('這裡沒地方下車');
+  }
+  buildRooms(addI) {
+    const w = this.world;
+    this.rooms = buildInteriors(this.scene, P.M.leaf.gradientMap);
+    const DOOR = { barn: -0.4, tudor: 0.2, shed: 0, hut: -0.3, mill: -0.5 };
+    for (const h of MAP.HOUSES) {
+      const R = this.rooms[h.id]; if (!R) continue;
+      const hx = h.x * S + (DOOR[h.style] || 0), hz = h.z * S + h.d / 2;
+      R.outside = V(hx, 0, hz + 1.3);
+      const enter = () => this.enterRoom(R);
+      addI({ pos: V(hx, 0, hz + 0.7), r: 1.3, label: () => `進入${R.name}`, use: () => {
+        if (h.id === 'shed' && !this.has('key')) return this.ui.say([['小禾', '門鎖著。爺爺的明信片說,鑰匙在「村裡最愛說話的人」手上。']], 'me');
+        if (h.id === 'shed' && !this.flags.shedOpened) { this.flags.shedOpened = 1; this.audio.thunk(); }
+        enter();
+      } });
+      // walls
+      const x0 = R.ox - R.w / 2, x1 = R.ox + R.w / 2, z0 = R.oz - R.d / 2, z1 = R.oz + R.d / 2;
+      w.colliders.add({ x0: x0 - 1, x1: x1 + 1, z0: z0 - 1, z1: z0 + 0.15 });
+      w.colliders.add({ x0: x0 - 1, x1: x0 + 0.15, z0: z0 - 1, z1: z1 + 1 });
+      w.colliders.add({ x0: x1 - 0.15, x1: x1 + 1, z0: z0 - 1, z1: z1 + 1 });
+      w.colliders.add({ x0: x0 - 1, x1: x1 + 1, z0: z1 - 0.2, z1: z1 + 1 });
+      for (const list of Object.values(R.objs)) for (const o of list) if (o.userData.coll) { const [a, b, c, d] = o.userData.coll; w.colliders.add({ x0: a, x1: b, z0: c, z1: d }); }
+      addI({ pos: V(R.ox, 0, z1 - 0.6), r: 1.1, label: () => '離開', use: () => this.leaveRoom(R) });
+      // examinable spots
+      const texts = ROOM_TEXT[h.id] || {};
+      for (const [k, [sx, sz]] of Object.entries(R.spots)) {
+        const pos = V(R.ox + sx, 0, R.oz + sz);
+        const act = this.roomAction(h.id, k, R);
+        if (!act && !texts[k]) continue;
+        addI({ pos, r: 1.0, on: () => !act || !act.on || act.on(), label: () => act?.label?.() || '調查', use: () => act?.use ? act.use(texts[k]) : this.ui.say(texts[k].map(t => Array.isArray(t) ? t : ['小禾', t]), 'me') });
+      }
+    }
+  }
+  roomAction(room, key, R) {
+    const say = (lines) => this.ui.say(lines.map(t => Array.isArray(t) ? t : ['小禾', t]), 'me');
+    if (room === 'cabin' && key === 'desk') return { label: () => '看看書桌', use: async (txt) => {
+      await say(txt);
+      if (!this.has('truckKey')) { await say(['書桌的抽屜卡住了……用力一拉——', '抽屜裡有一把掛著松果的鑰匙。是爺爺那台藍色小貨車「小藍」的鑰匙!']); this.give('truckKey'); }
+    } };
+    if (room === 'cabin' && key === 'doorframe') return { use: (txt) => say(this.flags.rang ? [...txt, '最上面那條旁邊,不知道什麼時候多了一行小字:「長得比我高了。」'] : txt) };
+    if (room === 'cabin' && key === 'dogbed') return { use: (txt) => say(this.pet?.adopted ? ['豆豆的新家。牠已經把這裡當成自己的窩了。'] : txt) };
+    if (room === 'shed' && key === 'gloves') return { on: () => !this.has('gloves'), label: () => '拿下手套', use: async () => {
+      R.objs.pegboard[0].userData.gloves.visible = false;
+      await say(['牆上掛著一雙磨得發亮的工作手套,上面用麥克筆寫著:「小禾專用」。']);
+      this.give('gloves'); this.setGoal('boulder');
+      await say(['……爺爺早就準備好了。']);
+    } };
+    if (room === 'amei' && key === 'jar') return { label: () => '狗餅乾罐', use: async () => {
+      const now = this.state.time;
+      if (this.state.treatAt && now - this.state.treatAt < 90) return say(['罐子空了。阿梅奶奶在外面喊:「下一批還在烤!等一下再來!」']);
+      this.state.treatAt = now; this.addMat('treat', 3);
+      await this.ui.say([['阿梅奶奶', '(從門外喊)狗餅乾?拿去拿去,別客氣!那隻在你爺爺家附近晃的小狗最愛吃了。']], 'amei');
+    } };
+    if (room === 'mill' && key === 'gears') return { use: () => say([this.flags.millFixed ? '齒輪喀啦喀啦地轉著,整間磨坊都在微微震動。阿松說這是「全世界最好聽的論文口試」。' : '巨大的齒輪,三年沒動了。上面結著一層薄薄的蜘蛛網。']) };
+    return null;
+  }
+  async enterRoom(R) {
+    this.curRoom = R;
+    this.pr.zoom = R.w > 7 ? 1.55 : 1.85; this.pr.updateFrustum();
+    await this.teleport(V(R.ox, 0, R.oz + R.d / 2 - 1.0), Math.PI, false);
+    if (this.pet?.adopted) this.pet.warp(V(R.ox + 0.8, 0, R.oz + R.d / 2 - 1.2));
+  }
+  async leaveRoom(R) {
+    await this.teleport(R.outside.clone(), 0, false);
+    this.pr.zoom = 1; this.pr.updateFrustum();
+    if (this.pet?.adopted) this.pet.warp(R.outside.clone().add(V(0.9, 0, 0.4)));
+  }
+  addMat(id, n = 1) {
+    const m = this.state.mats || (this.state.mats = {});
+    m[id] = (m[id] || 0) + n;
+    this.toast(`獲得 ${({ pinecone: '松果', berry: '野莓', mushroom: '香菇', treat: '狗餅乾' })[id]} ×${n}`);
+    this.audio.leaf(); this.save();
+  }
   buildMill() {
     const w = this.world, sc = this.scene, M = MAP.MILL, H = (x, z) => w.heightAt(x, z);
     const N = M.nodes;
@@ -690,6 +867,7 @@ export class Game {
           if (f.hits >= 3) {
             const n = f.species, first = !this.state.fish[n];
             this.state.fish[n] = (this.state.fish[n] || 0) + 1;
+            this.state.bagFish[n] = (this.state.bagFish[n] || 0) + 1;
             this.audio.splash(); this.audio[first ? 'card' : 'leaf']();
             this.toast(`釣到了「${n}」!${first ? '(新魚種!)' : ''}`, first);
             if (this.state.goal === 'catch') this.setGoal('cat');
@@ -794,6 +972,7 @@ export class Game {
   resetPuzzle() {
     const p = this.player.pos;
     let zone = null;
+    if (p.x >= 490) return;
     if (p.x > 250) zone = 'cave';
     else if (p.x > 34 && p.x < 66 && p.z > 54 && p.z < 74) zone = 'creek';
     else if (p.x > 4 && p.x < 40 && p.z > 70 && p.z < 84) zone = 'tutorial';
@@ -953,7 +1132,7 @@ export class Game {
     }
     this.started = true;
     document.body.classList.add('playing');
-    this.inCave = this.player.pos.x > 250;
+    this.inCave = this.player.pos.x > 250 && this.player.pos.x < 490;
     $('hud').classList.remove('hidden');
     this.cutscene = false;
     this.ui.refreshHUD();
@@ -963,6 +1142,7 @@ export class Game {
   }
 
   areaOf(x, z) {
+    if (x >= 490) return 'room';
     if (x > 250) return 'cave';
     const L = this.world.main.levelAt(x, z);
     if (L === 0) return 'village';
@@ -994,16 +1174,32 @@ export class Game {
     if (this.ui.dlg) this.ui.updateDialog(dt, inp);
     else if (this.fishing) this.updateFishing(dt);
     else if (!this.cutscene) {
-      if (inp.hit('Tab', 'KeyJ')) this.ui.toggleJournal();
+      if (inp.hit('Tab', 'KeyM')) this.ui.openTab('map');
+      else if (inp.hit('KeyJ')) this.ui.openTab('quest');
+      else if (inp.hit('KeyB', 'KeyI')) this.ui.openTab('bag');
       else if (this.ui.journalOpen && inp.hit('Escape')) this.ui.toggleJournal(false);
       else if (!this.ui.journalOpen && inp.hit('Escape')) this.ui.toggleJournal(true);
     }
     const free = !this.ui.busy() && p.lock <= 0;
-    p.update(dt, inp, this);
-    if (free) this.tryPush(dt); else { p.pushing = false; }
+    const driving = this.truck?.driving;
+    if (driving) {
+      this.truck.update(dt, this.ui.busy() ? { axis: () => ({ x: 0, z: 0, mag: 0 }), down: () => false, hit: () => false } : inp);
+      if (free && this.canInteract() && inp.hit('KeyE', 'Space', 'Enter')) this.exitTruck();
+    } else {
+      this.truck?.update(dt, inp);
+      p.update(dt, inp, this);
+    }
+    if (free && !driving) this.tryPush(dt); else { p.pushing = false; }
+    this.pet?.update(dt);
+    if (free && inp.hit('KeyP')) this.whistlePet();
+    // forage pickups (they grow back)
+    for (const f of this.forage || []) {
+      if (!f.m.visible) { if (this.state.time - (this.forageAt[f.i] || 0) > 240) f.m.visible = true; continue; }
+      if (!driving && Math.hypot(f.x - p.pos.x, f.z - p.pos.z) < 0.9) { f.m.visible = false; this.forageAt[f.i] = this.state.time; this.addMat(f.kind, f.kind === 'berry' ? 2 : 1); }
+    }
     // interaction
     let best = null;
-    if (free) {
+    if (free && !driving) {
       for (const it of this.inter) {
         if (!it.r || (it.on && !it.on())) continue;
         if (this.quiet && (this.quiet.all || this.quiet.it === it)) continue;
@@ -1016,7 +1212,6 @@ export class Game {
     if (best && this.canInteract() && inp.hit('KeyE', 'Space', 'Enter')) { this.activeInter = best.it; best.it.use(); }
     if (free && inp.hit('KeyR')) this.resetPuzzle();
     if (free && inp.hit('KeyZ') && this.state.upgrades.scope) { this.pr.zoom = this.pr.zoom === 1 ? 0.62 : 1; this.pr.updateFrustum(); }
-    if (free && inp.hit('KeyM')) { this.audio.musicOn = !this.audio.musicOn; this.toast(this.audio.musicOn ? '音樂:開' : '音樂:關'); }
     // collectibles
     for (const l of this.leaves) {
       if (this.state.leaves[l.i]) continue;
@@ -1029,19 +1224,21 @@ export class Game {
       }
     }
     // area banner
-    const ak = this.areaOf(p.pos.x, p.pos.z);
+    let ak = this.areaOf(p.pos.x, p.pos.z);
+    if (ak === 'room') ak = 'room:' + (this.curRoom?.id || '');
     if (ak !== this.areaKey) {
-      this.areaKey = ak; const [n, s] = AREAS[ak]; this.ui.area(n, s);
+      this.areaKey = ak; const [n, s] = ak.startsWith('room') ? [this.curRoom?.name || '', 'INSIDE'] : AREAS[ak]; if (n) this.ui.area(n, s);
       if (ak === 'forest' && this.state.goal === 'boulder') this.setGoal('creek');
       if (ak === 'camp' && !this.flags.creekDone && p.pos.x > 62) { this.flags.creekDone = 1; }
       if (ak === 'nook' && !this.flags.nook) { this.flags.nook = 1; this.toast('發現了秘密的地方!', true); }
     }
-    this.inCave = p.pos.x > 250;
+    this.inCave = p.pos.x > 250 && p.pos.x < 490;
+    this.inRoom = p.pos.x >= 490;
     // camera
     const tgt = p.pos.clone(); tgt.y += 0.8;
     if (!this.cutscene || this.camFollow) this.cam.lerp(tgt, 1 - Math.exp(-dt * 5));
     const hv = this.pr.viewHalf(), PADW = w.PAD * S;
-    if (!this.inCave) {
+    if (!this.inCave && !this.inRoom) {
       const x0 = -PADW + hv.x, x1 = MAP.COLS * S + PADW - hv.x, z0 = -PADW + hv.z, z1 = MAP.ROWS * S + PADW - hv.z;
       this.cam.x = x0 < x1 ? Math.min(x1, Math.max(x0, this.cam.x)) : (x0 + x1) / 2;
       this.cam.z = z0 < z1 ? Math.min(z1, Math.max(z0, this.cam.z)) : (z0 + z1) / 2;
@@ -1057,8 +1254,9 @@ export class Game {
       U.uLight.value.copy(uv);
       U.uLightR.value = this.has('lantern') ? 0.3 / this.pr.zoom * (330 / this.pr.H) : 0.12;
     }
-    this.pr.clearColor = this.inCave ? 0x050405 : 0x1c2414;
-    this.U.uCloud.value = this.inCave ? 0 : 1;
+    this.pr.clearColor = this.inCave ? 0x050405 : this.inRoom ? 0x1a120c : 0x1c2414;
+    this.U.uCloud.value = this.inCave || this.inRoom ? 0 : 1;
+    const tint = this.pr.uniforms.uTint.value; if (!this.cutscene) { if (this.inRoom) tint.setRGB(1.04, 0.97, 0.88); else tint.setRGB(1, 1, 1); }
     p.model.userData.lantern.visible = this.inCave && this.has('lantern');
     // compass
     if (this.state.upgrades.compass) {
@@ -1070,7 +1268,7 @@ export class Game {
     this.animateWorld(dt);
     // audio
     const waterNear = this.waterNear(p.pos);
-    this.audio.update(dt, { waterNear, cave: this.inCave });
+    this.audio.update(dt, { waterNear, cave: this.inCave, birds: !this.inRoom });
     this.saveT += dt;
     if (this.saveT > 8) { this.saveT = 0; this.save(); }
   }
@@ -1144,7 +1342,7 @@ export class Game {
     }
     // leaves spin
     for (const l of this.leaves) { if (!l.m.visible) continue; l.m.rotation.y += dt * 2; l.m.position.y = l.y0 + Math.sin(t * 2 + l.i) * 0.12; }
-    for (const c of this.cards) if (c.mesh && c.mesh.visible) { c.mesh.rotation.y += dt; c.mesh.position.y = w.heightAt(c.x, c.z) + 0.7 + Math.sin(t * 2.4) * 0.08; }
+    for (const c of this.cards) if (c.mesh && c.mesh.visible) { c.mesh.rotation.y += dt; c.mesh.position.y = w.heightAt(c.x, c.z) + (c.inRoom ? 1.0 : 0.7) + Math.sin(t * 2.4) * 0.08; }
     // mill wheel
     if (this.mill.turning) { this.mill.wheel.userData.spin.rotation.z -= dt * 1.2; this.lift.gear.rotation.z -= dt * 0.6; }
     else if (this.mill.leaky) this.mill.wheel.userData.spin.rotation.z = Math.sin(t * 3) * 0.05;
@@ -1156,7 +1354,7 @@ export class Game {
     if (this.ghost) { this.ghost.t += dt; animateCharacter(this.ghost.m, dt, 0, this.ghost.t > 2 && this.ghost.t < 6 ? 'cheer' : 'idle'); if (this.ghost.t > 14) { this.ghost.m.traverse(o => { if (o.isMesh) o.material.opacity = Math.max(0, 0.85 - (this.ghost.t - 14) * 0.3); }); if (this.ghost.t > 17) { this.scene.remove(this.ghost.m); this.ghost = null; } } }
     // falling leaves: each leaf drops from a canopy that is on screen and lands under that tree
     const pa = this.particles, pos = pa.pts.geometry.attributes.position, hv = this.pr.viewHalf();
-    pa.pts.visible = !this.inCave;
+    pa.pts.visible = !this.inCave && !this.inRoom;
     pa.pick = (pa.pick || 0) - dt;
     if (pa.pick <= 0 || !pa.near) {
       pa.pick = 0.5;

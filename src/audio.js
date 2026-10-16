@@ -81,6 +81,21 @@ export class Audio {
     }
     if (golden) [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => this.tone(784 * 2 ** (s / 12), 1.2, { type: 'triangle', vol: 0.06, at: 1 + i * 0.15, verb: 1 }));
   }
+  bark() { const now = performance.now(); if (this._bk && now - this._bk < 350) return; this._bk = now; this.tone(620, 0.08, { type: 'sawtooth', vol: 0.05, slide: 0.6, verb: 0.15 }); this.burst(0.06, 900, { vol: 0.06 }); }
+  honk() { this.tone(392, 0.32, { type: 'square', vol: 0.05, verb: 0.2 }); this.tone(494, 0.32, { type: 'square', vol: 0.04, verb: 0.2 }); }
+  dogWhistle() { this.tone(1800, 0.25, { type: 'sine', vol: 0.05, slide: 1.3, verb: 0.3 }); this.tone(2300, 0.3, { type: 'sine', vol: 0.04, at: 0.28, slide: 0.8, verb: 0.3 }); }
+  engine(speed) {
+    if (!this.ctx) return;
+    if (speed < 0) { if (this.eng) { this.eng.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1); } return; }
+    if (!this.eng) {
+      const o = this.ctx.createOscillator(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+      o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 420; g.gain.value = 0;
+      o.connect(f); f.connect(g); g.connect(this.sfxBus); o.start(); this.eng = { o, g };
+    }
+    const t = this.ctx.currentTime;
+    this.eng.o.frequency.setTargetAtTime(48 + speed * 9, t, 0.08);
+    this.eng.g.gain.setTargetAtTime(0.035 + speed * 0.004, t, 0.1);
+  }
   whistle() { // grandpa's slightly-off whistle
     [0, 2, 4, 7, 4, 2, 0, -1, 0].forEach((s, i) => this.tone(880 * 2 ** ((s + (i === 7 ? 0.3 : 0)) / 12), 0.38, { type: 'sine', vol: 0.06, at: i * 0.42, verb: 0.9, attack: 0.05 }));
   }

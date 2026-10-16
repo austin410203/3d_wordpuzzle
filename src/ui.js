@@ -4,28 +4,15 @@ import { NAMES, POSTCARD_TEXT, FISH, UPGRADES, GOALS } from './story.js';
 import { buildCharacter, buildCat, LOOKS, initCharacters } from './characters.js';
 import { pixelIcon } from './textures.js';
 import * as MAP from './map.js';
+import { ITEMS, CAT_NAMES, icon } from './items.js';
+import { portraitURL, hasPortrait } from './portraits.js';
 
 const $ = (id) => document.getElementById(id);
 
 export const ICONS = {};
 function makeIcons() {
-  ICONS.leaf = pixelIcon([
-    '....y....', '...yyy...', '.y.yYy.y.', '.yyyYyyy.', 'yyyyYyyyy', '.yyyYyyy.', '..yyYyy..', '....b....', '....b....'],
-  { y: '#f2b53a', Y: '#a8641a', b: '#7a4a1a' });
-  ICONS.card = pixelIcon([
-    'wwwwwwwwww', 'wrrwwwwbbw', 'wrrwwwwbbw', 'wwwwwwwwww', 'wkkkkkwwww', 'wwwwwwwwww', 'wkkkkkkkww', 'wwwwwwwwww'],
-  { w: '#f6eed8', r: '#d8402a', b: '#5a8ac0', k: '#9a8a70' });
-  ICONS.fish = pixelIcon([
-    '..........', '...bbbb...', '.bbBbbbb.b', 'bbwbbbbbbb', '.bbbbbbb.b', '...bbbb...', '..........'],
-  { b: '#5a9ab0', B: '#3a6a80', w: '#ffffff' });
-  const it = (art, pal) => pixelIcon(art, pal, 3);
-  ICONS.key = it(['..yyy.....', '.y...y....', '.y...yyyyy', '.y...y.y.y', '..yyy.....'], { y: '#e8c040' });
-  ICONS.gloves = it(['.bb.bb....', '.bbbbb.b..', '.bbbbbbb..', '.bbbbbb...', '.bbbbb....', '..ddd.....'], { b: '#b87a3a', d: '#6a4020' });
-  ICONS.rod = it(['........b.', '.......b..', '......b...', '.....b....', '....b...w.', '...b....w.', '..b.....w.', '.r......w.'], { b: '#8a5a32', r: '#d8402a', w: '#dddddd' });
-  ICONS.rope = it(['..rrrr..', '.r....r.', 'r..rr..r', 'r.r..r.r', 'r..rr..r', '.r....r.', '..rrrr..'], { r: '#c9a66b' });
-  ICONS.lantern = it(['...kk...', '..k..k..', '.kkkkkk.', '.kyyyyk.', '.kyYYyk.', '.kyyyyk.', '.kkkkkk.'], { k: '#3a3328', y: '#ffc860', Y: '#fff0a0' });
-  ICONS.hammer = it(['.bbbbb..', '.bbbbb..', '...w....', '...w....', '...w....', '...w....'], { b: '#b9893a', w: '#6a4426' });
-  ICONS.fishItem = ICONS.fish;
+  for (const k of [...Object.keys(ITEMS), 'leaf', 'postcard', 'fish', 'sketch']) ICONS[k] = icon(k, 3);
+  ICONS.card = ICONS.postcard;
 }
 
 export class UI {
@@ -70,11 +57,10 @@ export class UI {
   drawPortrait(id) {
     const cv = $('portrait'), ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#c9b48a'; ctx.fillRect(0, 0, 48, 48);
-    if (!id) return;
-    const img = this.portrait(id);
-    const draw = () => { ctx.fillStyle = '#c9b48a'; ctx.fillRect(0, 0, 48, 48); ctx.drawImage(img, 0, 0); };
-    if (img.complete) draw(); else img.onload = draw;
+    const bg = { player: ['#cfe0b0', '#b8cc94'], amei: ['#e8d0e8', '#d4b8d8'], wang: ['#c8dce8', '#b0c8d8'], chen: ['#ecd0b0', '#dcb890'], song: ['#e8e0c8', '#d4c8a8'], yu: ['#f0e0b0', '#e0c88c'], grandpa: ['#e0d8c0', '#cfc4a0'], cat: ['#f0d8c0', '#e0c0a0'], pet: ['#f2dcb8', '#e2c494'] }[id] || ['#c9b48a', '#b8a078'];
+    for (let y = 0; y < 48; y++) { ctx.fillStyle = bg[(y >> 2) % 2 ? 1 : 0]; ctx.fillRect(0, y, 48, 1); }
+    if (!id || !hasPortrait(id)) return;
+    ctx.drawImage(portraitURL(id), 0, 0);
   }
 
   // ---------------- dialogue
@@ -103,7 +89,7 @@ export class UI {
       d.who = who; d.text = text; d.shown = 0; d.choice = null;
       const name = NAMES[who] || who || '';
       $('dlg-name').textContent = name; $('dlg-name').style.visibility = name ? 'visible' : 'hidden';
-      this.drawPortrait(who === '小禾' || who === 'me' ? 'player' : (LOOKS[who] || who === 'cat') ? who : null);
+      this.drawPortrait(who === '小禾' || who === 'me' ? 'player' : hasPortrait(who) ? who : null);
       $('dlg-choices').innerHTML = '';
       $('dlg-next').style.visibility = 'hidden';
       return;
@@ -210,6 +196,12 @@ export class UI {
   }
 
   // ---------------- journal
+  openTab(t) {
+    if (this.journalOpen && this.curTab === t) return this.toggleJournal(false);
+    this.curTab = t;
+    if (!this.journalOpen) this.toggleJournal(true);
+    this.tab(t);
+  }
   toggleJournal(force) {
     this.journalOpen = force ?? !this.journalOpen;
     $('journal').classList.toggle('hidden', !this.journalOpen);
@@ -219,7 +211,7 @@ export class UI {
   tab(t) {
     this.curTab = t;
     document.querySelectorAll('.jtabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-    ['quest', 'items', 'map', 'opts'].forEach(k => $('jp-' + k).classList.toggle('hidden', k !== t));
+    ['quest', 'bag', 'items', 'map', 'opts'].forEach(k => $('jp-' + k).classList.toggle('hidden', k !== t));
     this.render(t);
   }
   render(t) {
@@ -235,6 +227,8 @@ export class UI {
         <h3>完成度</h3><div class="pct">${g.completion()}%</div>
         <div>遊戲時間 ${hh ? hh + ':' : ''}${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}${s.flags.rang ? ` · 登頂時間 ${fmt(s.flags.rangAt)}` : ''}</div>
         ${s.flags.trueEnd ? '<div class="done">★ 已看過「守鐘人」結局</div>' : s.flags.rang ? '<div>還有另一個結局…收集全部明信片後再敲一次鐘。</div>' : ''}`;
+    } else if (t === 'bag') {
+      this.renderBag();
     } else if (t === 'items') {
       const cards = MAP.POSTCARDS.map((p, i) => {
         const got = s.postcards[p.id]; const [title, text] = POSTCARD_TEXT[p.id];
@@ -271,33 +265,101 @@ export class UI {
       $('opt-wipe').onclick = () => { if (confirm('確定要刪除存檔嗎?')) { localStorage.removeItem('mapleRidgeSave'); location.reload(); } };
     }
   }
-  drawMap() {
-    const g = this.g, cv = $('mapcv'), ctx = cv.getContext('2d'), w = this.g.world;
+  bagEntries() {
+    const s = this.g.state, out = [];
+    for (const [id, it] of Object.entries(ITEMS)) {
+      let n = 0;
+      if (it.cat === 'tool' || it.cat === 'key') n = s.inv[id] ? 1 : 0;
+      else if (it.cat === 'material') n = (s.mats || {})[id] || 0;
+      else if (it.cat === 'upgrade') n = s.upgrades[id] ? 1 : 0;
+      if (id === 'key' && s.inv.gloves) n = 0;
+      if (n) out.push({ id, it, n, cat: it.cat });
+    }
+    for (const [name, n] of Object.entries(s.bagFish || {})) if (n > 0) out.push({ id: name, it: { name, cat: 'collect', desc: '剛釣到的魚,還活蹦亂跳。可以拿去餵貓或寵物。', use: 'feed', love: 3, fish: true }, n, cat: 'collect' });
+    const nl = Object.keys(s.leaves).length, np = Object.keys(s.postcards).length;
+    if (nl) out.push({ id: 'leaf', it: { name: '金楓葉', desc: '山裡散落的金色楓葉。拿給阿梅奶奶看會有好事。' }, n: nl, cat: 'collect' });
+    if (np) out.push({ id: 'postcard', it: { name: '爺爺的明信片', desc: '在「收藏」頁可以重讀每一張。' }, n: np, cat: 'collect' });
+    return out;
+  }
+  renderBag() {
+    const ents = this.bagEntries(), el = $('jp-bag');
+    const order = ['tool', 'key', 'material', 'collect', 'upgrade'];
+    const cats = { ...CAT_NAMES, collect: '收集與漁獲' };
+    let html = '<div class="bag"><div class="bag-grid">';
+    const pet = this.g.pet;
+    if (pet?.adopted) { const lv = pet.level(); html += `<div class="bag-pet"><img src="${icon('treat', 2)}"> 豆豆 <span class="hearts">${'♥'.repeat(lv)}${'♡'.repeat(4 - lv)}</span> 親密度 ${pet.st.love}${lv < 4 ? ' / ' + [5, 12, 24][lv - 1] : ''}<small>${['', '會跟著你、陪你冒險', '會嗅出附近的金楓葉', '會挖出藏在地下的寶物', '最好的夥伴'][lv]}</small></div>`; }
+    for (const c of order) {
+      const list = ents.filter(e => e.cat === c);
+      html += `<div class="bag-h">${cats[c]}</div>`;
+      if (!list.length) html += '<div class="bag-empty">(空)</div>';
+      for (const e of list) html += `<button class="bslot ${this.bagSel === e.id ? 'sel' : ''}" data-id="${e.id}"><img src="${ICONS[e.id] || icon(e.id, 3)}">${e.n > 1 ? `<i>${e.n}</i>` : ''}</button>`;
+    }
+    html += '</div><div class="bag-info" id="bag-info"></div></div>';
+    el.innerHTML = html;
+    el.querySelectorAll('.bslot').forEach(b => b.addEventListener('click', () => { this.bagSel = b.dataset.id; this.renderBag(); }));
+    const sel = ents.find(e => e.id === this.bagSel) || ents[0];
+    const info = $('bag-info');
+    if (!sel) { info.innerHTML = '<p>背包是空的。到處走走看吧!</p>'; return; }
+    const pet = this.g.pet;
+    const canUse = sel.it.use === 'whistle' || (sel.it.use === 'feed' && pet && pet.adopted);
+    info.innerHTML = `<img class="big" src="${icon(sel.id, 6)}"><b>${sel.it.name}</b>${sel.n > 1 ? ` ×${sel.n}` : ''}<p>${sel.it.desc}</p>
+      ${sel.it.use === 'feed' ? `<p class="hint">${pet && pet.adopted ? `餵豆豆吃(親密度 +${sel.it.love})` : '可以拿來餵動物。'}</p>` : ''}
+      ${canUse ? `<button id="bag-use">${sel.it.use === 'whistle' ? '吹狗哨' : '餵豆豆'}</button>` : ''}`;
+    if (canUse) $('bag-use').onclick = () => { this.g.useItem(sel); this.renderBag(); };
+  }
+  mapBase() {
+    if (this._mapBase) return this._mapBase;
+    const cv = document.createElement('canvas'); cv.width = 448; cv.height = 384;
+    const ctx = cv.getContext('2d'), w = this.g.world;
     const sx = cv.width / (MAP.COLS * 2), sz = cv.height / (MAP.ROWS * 2);
-    const cols = ['#7a8a3a', '#6e7e34', '#62722e', '#566628', '#4a5a22'];
+    const cols = ['#8a9a44', '#7a8a3c', '#6c7c34', '#5e6e2e', '#526228'];
     const img = ctx.createImageData(cv.width, cv.height);
+    const pathMask = new Uint8Array(cv.width * cv.height);
+    for (const p of w.paths) for (let i = 0; i < p.pts.length - 1; i++) {
+      const [ax, az] = p.pts[i], [bx, bz] = p.pts[i + 1], n = Math.ceil(Math.hypot(bx - ax, bz - az) * 3);
+      for (let k = 0; k <= n; k++) {
+        const x = ax + (bx - ax) * k / n, z = az + (bz - az) * k / n, r = p.w * sx;
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const px = Math.round(x * sx + dx), py = Math.round(z * sz + dy); if (px >= 0 && py >= 0 && px < cv.width && py < cv.height) pathMask[py * cv.width + px] = 1; }
+      }
+    }
     for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) {
       const wx = x / sx, wz = y / sz, i = (y * cv.width + x) * 4;
       let c;
-      if (w.main.isWater(wx, wz)) c = '#4f8a87';
+      if (w.main.isWater(wx, wz)) c = '#4f8a9a';
       else {
-        const L = w.main.levelAt(wx, wz), d = w.pathDist(wx, wz);
-        c = d < 0 ? '#c39058' : cols[L];
-        const L2 = w.main.levelAt(wx, wz + 1.2);
-        if (L2 < L) c = '#7a5232';
+        const L = w.main.levelAt(wx, wz);
+        c = pathMask[y * cv.width + x] ? '#c8975c' : cols[L];
+        if (w.main.levelAt(wx, wz + 1.0) < L) c = '#7a5232';
       }
       const v = parseInt(c.slice(1), 16);
       img.data[i] = v >> 16; img.data[i + 1] = (v >> 8) & 255; img.data[i + 2] = v & 255; img.data[i + 3] = 255;
     }
     ctx.putImageData(img, 0, 0);
+    for (const t of w.canopies) if (t.x > 0 && t.z > 0 && (t.x * 7 + t.z * 3) % 3 < 1) { ctx.fillStyle = ['orange', 'amber', 'red'].includes(t.kind) ? 'rgba(216,112,42,.55)' : 'rgba(58,82,34,.45)'; ctx.fillRect(t.x * sx - 1, t.z * sz - 1, 3, 3); }
+    return (this._mapBase = cv);
+  }
+  drawMap() {
+    const g = this.g, cv = $('mapcv'), ctx = cv.getContext('2d');
+    const sx = cv.width / (MAP.COLS * 2), sz = cv.height / (MAP.ROWS * 2);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.mapBase(), 0, 0);
     const dot = (x, z, col, r = 3) => { ctx.fillStyle = '#2a1a10'; ctx.fillRect(x * sx - r - 1, z * sz - r - 1, r * 2 + 2, r * 2 + 2); ctx.fillStyle = col; ctx.fillRect(x * sx - r, z * sz - r, r * 2, r * 2); };
     for (const h of MAP.HOUSES) dot(h.x * 2, h.z * 2, '#d8702a', 4);
     dot(MAP.BELL.x * 2, MAP.BELL.z * 2, '#ffd27a', 5);
     if (g.state.upgrades.scope) for (let i = 0; i < MAP.LEAVES.length; i++) if (!g.state.leaves[i]) dot(MAP.LEAVES[i][0] * 2, MAP.LEAVES[i][1] * 2, '#f2b53a', 2);
-    const p = g.player.pos;
-    if (p.x < 250) { dot(p.x, p.z, '#ffffff', 4); ctx.fillStyle = '#d8402a'; ctx.fillRect(p.x * sx - 2, p.z * sz - 2, 4, 4); }
-    ctx.fillStyle = '#3a2a1e'; ctx.font = '14px DotGothic16, sans-serif';
-    [['楓嶺村', 14, 92], ['伐木營地', 66, 62], ['磨坊', 76, 40], ['古燈林', 10, 26], ['山頂', 46, 12]].forEach(([t, x, z]) => ctx.fillText(t, x * sx, z * sz));
+    ctx.font = '13px DotGothic16, sans-serif';
+    const label = (t, x, z) => { ctx.fillStyle = 'rgba(243,230,200,.85)'; const w2 = ctx.measureText(t).width; ctx.fillRect(x * sx - 2, z * sz - 12, w2 + 4, 15); ctx.fillStyle = '#3a2a1e'; ctx.fillText(t, x * sx, z * sz); };
+    [['楓嶺村', 8, 94], ['伐木營地', 64, 60], ['磨坊', 74, 40], ['古燈林', 6, 24], ['山頂', 44, 10]].forEach(([t, x, z]) => label(t, x, z));
+    // you are here (blinks)
+    const p = g.outsidePos(), on = Math.floor(performance.now() / 350) % 2 === 0;
+    const X = p.x * sx, Z = p.z * sz;
+    ctx.strokeStyle = '#d8402a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(X, Z, on ? 9 : 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#2a1a10'; ctx.fillRect(X - 4, Z - 4, 8, 8); ctx.fillStyle = on ? '#ffffff' : '#ffd27a'; ctx.fillRect(X - 3, Z - 3, 6, 6);
+    // facing arrow
+    const f = g.player.face; ctx.fillStyle = '#d8402a'; ctx.fillRect(X + Math.sin(f) * 7 - 2, Z + Math.cos(f) * 7 - 2, 4, 4);
+    const area = g.areaKey ? (g.areaName?.() || '') : '';
+    label('你在這裡' + (area ? ' · ' + area : ''), Math.min(MAP.COLS * 2 - 30, p.x + 3), Math.max(6, p.z - 2));
+    if (this.journalOpen && this.curTab === 'map') { cancelAnimationFrame(this._mapRAF); clearTimeout(this._mapT); this._mapT = setTimeout(() => this.drawMap(), 350); }
   }
 
   // ---------------- captions / fade

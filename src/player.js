@@ -30,7 +30,7 @@ export class Player {
   // can the player stand at (x,z) coming from height h0?
   standable(x, z, h0) {
     const w = this.world, b = w.bounds, T = w.T(x, z);
-    const inCave = x > 250;
+    const inCave = x > 250; // caves + rooms: walls are colliders
     if (!inCave && (x < b.x0 || x > b.x1 || z < b.z0 || z > b.z1)) return false;
     for (const [a, c] of [[0, 0], [RAD, 0], [-RAD, 0], [0, RAD], [0, -RAD]]) {
       const px = x + a, pz = z + c;
@@ -53,8 +53,8 @@ export class Player {
     this.blockedBy = null; this.pushDir = null;
     let ax = 0, az = 0, mag = 0;
     if (this.lock <= 0 && !game.uiBusy()) { const a = input.axis(); ax = a.x; az = a.z; mag = a.mag; }
-    const run = this.runUnlocked && input.down('ShiftLeft', 'ShiftRight');
-    const maxS = (run ? 6.4 : 4.0) * mag;
+    const run = input.down('ShiftLeft', 'ShiftRight');
+    const maxS = (run ? (this.runUnlocked ? 7.6 : 6.2) : 4.0) * mag;
     if (mag > 0.05) {
       const tgt = Math.atan2(ax, az);
       let d = tgt - this.face; d = Math.atan2(Math.sin(d), Math.cos(d));

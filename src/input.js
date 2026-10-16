@@ -16,7 +16,7 @@ export class Input {
   }
   // Floating joystick: touch anywhere in the left zone, the stick appears under the finger.
   // Uses Touch Events when available (most reliable on iOS/Android), pointer events otherwise.
-  bindTouch(zone, stick, knob, btnA, btnB, btnM) {
+  bindTouch(zone, stick, knob, btnA, btnB, btnM, btnBag) {
     const R = 34;
     let sid = null, cx = 0, cy = 0;
     const held = new Map(); // touch/pointer id -> key code
@@ -41,9 +41,9 @@ export class Input {
     const unpress = (id) => {
       const code = held.get(id); if (!code) return; held.delete(id);
       if (![...held.values()].includes(code)) this.keys.delete(code);
-      for (const el of [btnA, btnB, btnM]) if (el.dataset.code === code) el.classList.remove('down');
+      for (const el of [btnA, btnB, btnM, btnBag]) if (el.dataset.code === code) el.classList.remove('down');
     };
-    btnA.dataset.code = 'KeyE'; btnB.dataset.code = 'ShiftLeft'; btnM.dataset.code = 'Tab';
+    btnA.dataset.code = 'KeyE'; btnB.dataset.code = 'ShiftLeft'; btnM.dataset.code = 'KeyM'; btnBag.dataset.code = 'KeyB';
     const opt = { passive: false };
     if ('ontouchstart' in window || location.search.includes('touchev')) {
       zone.addEventListener('touchstart', e => {
@@ -54,7 +54,7 @@ export class Input {
       const tend = e => { for (const t of e.changedTouches) { if (t.identifier === sid) release(); unpress(t.identifier); } };
       addEventListener('touchmove', tmove, opt);
       addEventListener('touchend', tend); addEventListener('touchcancel', tend);
-      for (const el of [btnA, btnB, btnM]) el.addEventListener('touchstart', e => {
+      for (const el of [btnA, btnB, btnM, btnBag]) el.addEventListener('touchstart', e => {
         e.preventDefault(); e.stopPropagation();
         for (const t of e.changedTouches) press(t.identifier, el.dataset.code, el);
       }, opt);
@@ -65,7 +65,7 @@ export class Input {
       zone.addEventListener('pointermove', e => { if (e.pointerId === sid) steer(e.clientX, e.clientY); });
       const pend = e => { if (e.pointerId === sid) release(); };
       zone.addEventListener('pointerup', pend); zone.addEventListener('pointercancel', pend); zone.addEventListener('lostpointercapture', pend);
-      for (const el of [btnA, btnB, btnM]) {
+      for (const el of [btnA, btnB, btnM, btnBag]) {
         el.addEventListener('pointerdown', e => { e.preventDefault(); press('p' + e.pointerId, el.dataset.code, el); });
         for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(ev, e => unpress('p' + e.pointerId));
       }

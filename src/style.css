@@ -157,3 +157,24 @@ body.dlg-open #stickzone { display: none; }
 
 .jfoot { display: flex; justify-content: space-between; align-items: center; }
 #jclose { font: inherit; font-size: 15px; padding: 4px 14px; background: var(--ink); color: var(--paper); border: 2px solid var(--edge); cursor: pointer; }
+body.touch #tbtn-bag { right: calc(env(safe-area-inset-right, 0px) + 78px); top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: auto; }
+body.touch #counters { right: calc(env(safe-area-inset-right, 0px) + 126px); }
+#tbtn-bag { right: 34px; bottom: 196px; }
+
+.bag { display: flex; gap: 14px; height: 100%; }
+.bag-grid { flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+.bag-h { flex-basis: 100%; color: var(--accent); font-size: 15px; letter-spacing: 2px; margin-top: 6px; border-bottom: 2px dashed var(--paper2); }
+.bag-empty { font-size: 13px; color: #a89878; }
+.bslot { position: relative; width: 58px; height: 58px; padding: 0; background: #fbf3df; border: 3px solid var(--edge); box-shadow: inset 0 0 0 2px #e8d8b0; cursor: pointer; display: grid; place-items: center; }
+.bslot img { width: 42px; image-rendering: pixelated; }
+.bslot i { position: absolute; right: 2px; bottom: 0; font-style: normal; font-size: 13px; color: var(--ink); text-shadow: 1px 1px 0 #fff; }
+.bslot.sel { background: #ffd27a; }
+.bag-info { width: 230px; padding: 10px; background: #fbf3df; border: 3px solid var(--edge); font-size: 14px; line-height: 1.55; }
+.bag-info img.big { display: block; margin: 0 auto 6px; image-rendering: pixelated; max-width: 110px; }
+.bag-info b { font-size: 17px; font-weight: normal; color: var(--ink); }
+.bag-info .hint { color: var(--accent); font-size: 13px; }
+.bag-info button { font: inherit; padding: 5px 14px; background: var(--ink); color: var(--paper); border: 2px solid var(--edge); cursor: pointer; }
+@media (max-width: 760px), (max-height: 480px) { .bag { flex-direction: column; } .bag-info { width: auto; } .bslot { width: 46px; height: 46px; } .bslot img { width: 32px; } }
+.slot img { image-rendering: pixelated; }
+#portrait-wrap { background: #c9b48a; overflow: hidden; } #portrait { image-rendering: pixelated; }
+.bag-pet { flex-basis: 100%; padding: 6px 10px; background: #fbf3df; border: 2px solid var(--edge); font-size: 15px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .bag-pet img { image-rendering: pixelated; } .bag-pet .hearts { color: #e0405a; letter-spacing: 2px; } .bag-pet small { color: var(--ink2); font-size: 12px; }
