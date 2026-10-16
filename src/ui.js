@@ -300,7 +300,7 @@ export class UI {
     const sel = ents.find(e => e.id === this.bagSel) || ents[0];
     const info = $('bag-info');
     if (!sel) { info.innerHTML = '<p>背包是空的。到處走走看吧!</p>'; return; }
-    const pet = this.g.pet;
+
     const canUse = sel.it.use === 'whistle' || (sel.it.use === 'feed' && pet && pet.adopted);
     info.innerHTML = `<img class="big" src="${icon(sel.id, 6)}"><b>${sel.it.name}</b>${sel.n > 1 ? ` ×${sel.n}` : ''}<p>${sel.it.desc}</p>
       ${sel.it.use === 'feed' ? `<p class="hint">${pet && pet.adopted ? `餵豆豆吃(親密度 +${sel.it.love})` : '可以拿來餵動物。'}</p>` : ''}

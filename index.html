@@ -94,6 +94,15 @@
     <div id="tbtn-bag" class="tb small">包</div>
   </div>
 
+  <script>
+    // if a module fails to load/parse, show it instead of hanging on the loading text
+    window.addEventListener('error', function (e) {
+      if (window.__game) return;
+      var el = document.getElementById('tload');
+      if (el) el.innerHTML = '載入失敗,請重新整理頁面。<br><small style="opacity:.7">' + (e.message || '') + '</small>';
+    });
+    setTimeout(function () { if (!window.__game) { var el = document.getElementById('tload'); if (el && el.textContent.indexOf('失敗') < 0) el.innerHTML = '載入比較久……如果一直沒反應,請重新整理頁面。'; } }, 25000);
+  </script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>
