@@ -17,13 +17,13 @@ export class Input {
   // Floating joystick: touch anywhere in the left zone, the stick appears under the finger.
   // Uses Touch Events when available (most reliable on iOS/Android), pointer events otherwise.
   bindTouch(zone, stick, knob, btnA, btnB, btnM, btnBag) {
-    const R = 34;
+    const R = 40;
     let sid = null, cx = 0, cy = 0;
     const held = new Map(); // touch/pointer id -> key code
-    const place = (x, y) => {
-      const r = stick.offsetWidth / 2 || 48;
-      cx = Math.min(innerWidth - r - 4, Math.max(r + 4, x)); cy = Math.min(innerHeight - r - 4, Math.max(r + 4, y));
-      stick.style.left = (cx - r) + 'px'; stick.style.top = (cy - r) + 'px'; stick.style.bottom = 'auto';
+    // fixed joystick: always centred on the drawn ring, wherever inside the grab zone the touch starts
+    const place = () => {
+      const r = stick.getBoundingClientRect();
+      cx = r.left + r.width / 2; cy = r.top + r.height / 2;
       stick.classList.add('on');
     };
     const steer = (x, y) => {
@@ -31,11 +31,11 @@ export class Input {
       if (L > R) { dx *= R / L; dy *= R / L; }
       knob.style.transform = `translate(${dx}px, ${dy}px)`;
       const m = Math.hypot(dx, dy) / R;
-      this.joy.x = m < 0.15 ? 0 : dx / R; this.joy.y = m < 0.15 ? 0 : dy / R; this.joy.active = true;
+      this.joy.x = m < 0.12 ? 0 : dx / R; this.joy.y = m < 0.12 ? 0 : dy / R; this.joy.active = true;
     };
     const release = () => {
       sid = null; knob.style.transform = ''; this.joy.x = this.joy.y = 0; this.joy.active = false;
-      stick.style.left = stick.style.top = stick.style.bottom = ''; stick.classList.remove('on');
+      stick.classList.remove('on');
     };
     const press = (id, code, el) => { held.set(id, code); this.pressed.add(code); this.keys.add(code); el.classList.add('down'); };
     const unpress = (id) => {

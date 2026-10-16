@@ -115,7 +115,7 @@ export const HOUSES = [
 
 export const NPCS = [
   { id: 'amei', x: 22.5, z: 41.25 },
-  { id: 'wang', x: 24.0, z: 43.6 },
+  { id: 'wang', x: 24.3, z: 41.5 },
   { id: 'cat', x: 38.6, z: 44.0 },
   { id: 'chen', x: 36.0, z: 32.6 },
   { id: 'song', x: 40.0, z: 24.4 },
