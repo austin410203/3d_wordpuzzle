@@ -20,6 +20,7 @@ export class Audio {
     this.waterN = this.loopNoise(900, 0.0, 'bandpass', 0.6);
     this.t0 = C.currentTime; this.nextNote = C.currentTime + 0.5; this.mstep = 0; this.bar = 0;
     this.nextBird = C.currentTime + 2;
+    this.initMusic();
   }
   impulse(sec, decay) {
     const C = this.ctx, n = Math.floor(C.sampleRate * sec), b = C.createBuffer(2, n, C.sampleRate);
@@ -33,6 +34,35 @@ export class Audio {
     const g = C.createGain(); g.gain.value = gain;
     s.connect(f); f.connect(g); g.connect(this.sfxBus); s.start();
     return { f, g };
+  }
+  // ---- streamed soundtrack (assets/music/*.mp3), crossfaded by area; synth music is the fallback
+  initMusic() {
+    if (this.tracks) return;
+    this.tracks = {};
+    for (const id of ['village', 'trail', 'cave', 'ending']) {
+      const a = new window.Audio(`./assets/music/${id}.mp3`);
+      a.loop = id !== 'ending'; a.preload = id === 'village' ? 'auto' : 'metadata'; a.volume = 0;
+      a.addEventListener('canplaythrough', () => { a.ok = true; }, { once: true });
+      a.addEventListener('error', () => { a.bad = true; });
+      this.tracks[id] = a;
+    }
+    this.cur = null;
+  }
+  playTrack(id) {
+    this.want = id;
+  }
+  musicTick(dt) {
+    if (!this.tracks) return false;
+    const want = this.musicOn ? this.want : null;
+    let any = false;
+    for (const [id, a] of Object.entries(this.tracks)) {
+      const target = id === want && !a.bad ? this.vol.music * this.vol.master * 0.8 : 0;
+      if (target > 0 && a.paused) { a.play().catch(() => {}); }
+      a.volume = Math.max(0, Math.min(1, a.volume + Math.sign(target - a.volume) * Math.min(Math.abs(target - a.volume), dt * 0.5)));
+      if (target === 0 && a.volume < 0.005 && !a.paused) a.pause();
+      if (id === want && !a.bad && (a.ok || a.readyState >= 3)) any = true;
+    }
+    return any;
   }
   setVol(k, v) { this.vol[k] = v; if (!this.ctx) return; ({ master: this.master, music: this.musBus, sfx: this.sfxBus })[k].gain.value = v; }
   env(g, t, a, peak, d) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
@@ -110,6 +140,7 @@ export class Audio {
       const f = 2200 + Math.random() * 1600, n = 2 + Math.floor(Math.random() * 4);
       for (let i = 0; i < n; i++) this.tone(f * (1 + (i % 2) * 0.15), 0.07, { type: 'sine', vol: 0.025, at: i * 0.11, slide: 1.3, verb: 0.4 });
     }
+    if (this.musicTick(dt)) return;
     if (!this.musicOn) return;
     const bpm = cave ? 54 : 72, beat = 60 / bpm / 2;
     // pentatonic in D (day) / A minor-ish (cave)

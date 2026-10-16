@@ -1017,6 +1017,7 @@ export class Game {
     await sleep(500);
     const golden = !!this.state.upgrades.watch;
     this.audio.bell(golden);
+    this.endingMusic = true; setTimeout(() => { if (this.audio.tracks) { this.audio.tracks.ending.currentTime = 0; } this.audio.playTrack('ending'); }, 2500);
     this.pr.uniforms.uFlash.value = 0.6; this.shake = 1.0;
     this.tween(0.6, k => { this.pr.uniforms.uFlash.value = 0.6 * (1 - k); });
     B.swing = 1;
@@ -1063,6 +1064,7 @@ export class Game {
       if (first) this.toast(`後日談:山裡還藏著 ${5 - Object.keys(this.state.postcards).length} 張明信片、${20 - Object.keys(this.state.leaves).length} 片金楓葉`);
     }
     this.cutscene = false;
+    setTimeout(() => { this.endingMusic = false; }, 4000);
     this.save();
   }
   spawnGrandpa() {
@@ -1267,6 +1269,10 @@ export class Game {
     }
     this.animateWorld(dt);
     // audio
+    if (!this.endingMusic) {
+      const L = this.inCave ? -1 : this.world.main.levelAt(p.pos.x, p.pos.z);
+      this.audio.playTrack(this.inCave ? 'cave' : (this.inRoom || p.pos.x < 250 && L === 0) ? 'village' : 'trail');
+    }
     const waterNear = this.waterNear(p.pos);
     this.audio.update(dt, { waterNear, cave: this.inCave, birds: !this.inRoom });
     this.saveT += dt;

@@ -3,7 +3,7 @@
 像素風(three.js 低解析度渲染 + 描邊)的解謎探險遊戲。回到過世爺爺的楓嶺,推石頭、釣魚、修水車、點古燈、闖山洞,登頂敲響回音鐘。
 
 - 純靜態網站,不需 build:three@0.170.0 由 CDN import map 載入,直接部署到 Vercel(Framework: Other,Output: 根目錄)。
-- 所有美術(地形、樹、房子、角色)與音樂音效都是程式即時生成。
+- 地形、樹、房子、角色由程式即時生成;對話頭像與道具圖示用 Gemini 生成(assets/portraits、assets/items,原圖在 art_src/);配樂 4 首用 Suno v6-mini 生成(assets/music:村莊、山徑、山洞、結局),音效為程式合成。
 - 本機測試:`python -m http.server` 後開 `http://localhost:8000`。
 
 操作:WASD/方向鍵 移動 · Shift 奔跑 · E/空白 互動、推石、上下車 · Tab/M 地圖 · B 背包 · J 旅程 · P 狗哨 · H 喇叭 · R 重置謎題 · Z 望遠鏡。手機:左半邊浮動搖桿 + E/跑/圖/包 按鈕。
