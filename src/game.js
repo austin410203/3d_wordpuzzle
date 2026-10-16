@@ -82,7 +82,7 @@ export class Game {
   waitAdvance(ms) {
     return new Promise(res => {
       const t0 = performance.now();
-      const chk = () => { if (performance.now() - t0 > ms || (performance.now() - t0 > 600 && this._advance)) { this._advance = false; res(); } else requestAnimationFrame(chk); };
+      const chk = () => { if (performance.now() - t0 > ms || (performance.now() - t0 > 600 && this._advance)) { this._advance = false; res(); } else setTimeout(chk, 30); };
       this._advance = false; chk();
     });
   }
@@ -111,7 +111,7 @@ export class Game {
       sc.add(model);
       const npc = { id: n.id, model, home: V(x, 0, z), pos: V(x, H(x, z), z), face: 0, coll: w.colliders.add({ x, z, r: n.id === 'cat' ? 0.3 : 0.38, npc: n.id }) };
       this.npcs[n.id] = npc;
-      addI({ npc: n.id, get pos() { return npc.pos; }, r: 1.6, label: () => n.id === 'cat' ? '摸摸貓' : `和${NAMES[n.id]}說話`, use: () => this.talkTo(n.id) });
+      addI({ npc: n.id, get pos() { return npc.pos; }, r: 2.0, label: () => n.id === 'cat' ? '摸摸貓' : `和${NAMES[n.id]}說話`, use: () => this.talkTo(n.id) });
     }
     this.npcs.amei.face = 0.3; this.npcs.wang.face = Math.PI / 2; this.npcs.chen.face = 0.6;
     // ---------- ducks & birds
@@ -143,7 +143,7 @@ export class Game {
       if (!p.inMailbox) { mesh = env(); mesh.position.set(x, H(x, z) + 0.7, z); mesh.layers.enable(3); sc.add(mesh); }
       const card = { id: p.id, x, z, mesh };
       this.cards.push(card);
-      addI({ get pos() { return V(x, H(x, z), z); }, r: p.inMailbox ? 1.4 : 1.3, label: () => p.inMailbox ? '打開信箱' : '撿起明信片', on: () => !this.state.postcards[p.id], use: () => this.readCard(p.id) });
+      addI({ get pos() { return V(x, H(x, z), z); }, r: p.inMailbox ? 1.9 : 1.4, label: () => p.inMailbox ? '打開信箱' : '撿起明信片', on: () => !this.state.postcards[p.id], use: () => this.readCard(p.id) });
     }
     // ---------- golden leaves
     const leafShape = new THREE.Shape();
@@ -164,7 +164,7 @@ export class Game {
       ? [['小禾', '門框上還刻著我小時候的身高線。最上面那條旁邊,多了一行小字:「長得比我高了。」']]
       : [['小禾', '屋子裡還有爺爺的味道:木頭、茶,還有一點點樟腦丸。'], ['小禾', '先去看看信箱吧。']], 'me') });
     // ---------- signs
-    const signs = [['楓嶺村', 17.2, 44.2], ['步道 →', 17.3, 39.9], ['伐木營地', 32.6, 32.6], ['磨坊', 38.4, 25.8], ['古燈林', 17.6, 13.0], ['山頂 · 回音鐘', 14.2, 6.0]];
+    const signs = [['楓嶺村', 17.2, 44.2], ['步道 →', 19.4, 39.3], ['伐木營地', 32.6, 32.6], ['磨坊', 37.4, 24.4], ['古燈林', 17.6, 13.0], ['山頂 · 回音鐘', 14.2, 6.0]];
     for (const [t, mx, mz] of signs) addI({ pos: V(mx * S, 0, mz * S), r: 1.2, label: () => '看告示牌', use: () => this.ui.say([['', SIGNS[t]]]) });
     // ---------- boulders (sokoban)
     this.boulders = []; this.filled = new Set(this.state.filled || []);
@@ -382,7 +382,7 @@ export class Game {
     const w = this.world;
     if (b.sunk) {
       const ws = w.main.waterSurfaceAt(x, z) ?? w.heightAt(x, z);
-      b.m.position.set(x, ws - 0.62, z); b.m.scale.set(1, 0.85, 1);
+      b.m.position.set(x, ws - 0.42, z); b.m.scale.set(1.05, 0.8, 1.05);
     } else { b.m.position.set(x, w.heightAt(x, z) - 0.06, z); b.m.scale.set(1, 1, 1); }
     b.coll.off = b.sunk;
     w.colliders.move(b.coll, x, z);
@@ -809,7 +809,7 @@ export class Game {
       const i = g.I(c, r);
       if (g.water[i] && (this.filled.has(`${c},${r}`) || g.stone[i])) {
         const ws = w.main.waterSurfaceAt((c + 0.5) * S, (r + 0.5) * S);
-        if (ws != null) return ws + 0.24;
+        if (ws != null) return ws + 0.3;
       }
     }
     if (x > 49.0 && x < 53.4 && z > 84.45 && z < 85.95) return this.dockY;
@@ -836,8 +836,17 @@ export class Game {
       await sleep(2200);
       // pan out over the valley at sunset
       const fromCam = this.cam.clone(), tint = this.pr.uniforms.uTint.value;
-      const to = V(48, 6, 60);
-      await this.tween(5, k => { this.cam.lerpVectors(fromCam, to, ease(k)); tint.setRGB(1, 1 - 0.12 * k, 1 - 0.25 * k); });
+      // sweep down the whole mountain: summit → mill → creek → village pond, at sunset
+      const to = V(58, 0.5, 82);
+      const way = [fromCam, V(70, 12, 30), V(52, 6, 58), to];
+      this._sweepStop = false;
+      this.tween(12, k => {
+        if (this._sweepStop) return;
+        const e = ease(k) * (way.length - 1), i = Math.min(way.length - 2, Math.floor(e));
+        this.cam.lerpVectors(way[i], way[i + 1], e - i);
+        tint.setRGB(1, 1 - 0.12 * Math.min(1, k * 2), 1 - 0.25 * Math.min(1, k * 2));
+      });
+      await sleep(2500);
       if (golden) this.goldenLeaves(true);
       const lines = [];
       if (first) lines.push(ENDING.normal);
@@ -854,7 +863,10 @@ export class Game {
         el.classList.add('hidden');
       }
       if (allCards) this.flags.trueEnd = 1;
-      await this.tween(2.5, k => { this.cam.lerpVectors(to, p.pos.clone().add(V(0, 0.8, 0)), ease(k)); tint.setRGB(1, 0.88 + 0.12 * k, 0.75 + 0.25 * k); });
+      await sleep(800);
+      this._sweepStop = true;
+      const back = this.cam.clone();
+      await this.tween(2.5, k => { this.cam.lerpVectors(back, p.pos.clone().add(V(0, 0.8, 0)), ease(k)); tint.setRGB(1, 0.88 + 0.12 * k, 0.75 + 0.25 * k); });
       if (golden) setTimeout(() => this.goldenLeaves(false), 20000);
       this.setGoal('free');
       if (first) this.toast(`後日談:山裡還藏著 ${5 - Object.keys(this.state.postcards).length} 張明信片、${20 - Object.keys(this.state.leaves).length} 片金楓葉`);

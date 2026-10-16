@@ -57,8 +57,8 @@ export class UI {
     const look = id === 'cat' ? null : LOOKS[id] || LOOKS.player;
     const m = look ? buildCharacter(look) : buildCat();
     this.pScene.add(m);
-    const headY = look ? 1.25 * (look.big || 1) : 0.5;
-    this.pCam.position.set(0.25, headY + 0.1, look ? 1.55 : 1.05); this.pCam.lookAt(0, headY - 0.05, look ? 0 : 0.2);
+    const headY = look ? 1.3 * (look.big || 1) * 1.18 : 0.55;
+    this.pCam.position.set(0.45, headY + 0.25, look ? 2.6 : 1.5); this.pCam.lookAt(0, headY - 0.12, look ? 0 : 0.2);
     this.pr.render(this.pScene, this.pCam);
     const url = this.pr.domElement.toDataURL();
     this.pScene.remove(m);

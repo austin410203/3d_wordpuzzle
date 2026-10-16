@@ -345,7 +345,7 @@ export function buildWorld(scene, gradient, U) {
   put(P.clothesline(), 23.4, 38.6, 0.1, 0);
   put(P.crate(), 19.6, 38.8, 0, 0.4); put(P.barrel(), 19.4, 39.4, 0, 0.3);
   put(P.signpost('楓嶺村'), 17.2, 44.2, 0, 0.15);
-  put(P.signpost('步道 →'), 17.3, 39.9, 0, 0.15);
+  put(P.signpost('步道 →'), 19.4, 39.3, 0, 0.15);
   const dockX = 25.6 * S, dockZ = 42.6 * S;
   const dk = P.dock(4.4, 1.4); const dockY = (main.waterSurfaceAt(dockX + 1.4, dockZ) ?? 0) + 0.32; dk.position.set(dockX, dockY, dockZ); scene.add(dk);
   // lumberjack camp (east bank)
@@ -357,7 +357,7 @@ export function buildWorld(scene, gradient, U) {
   put(P.bench(), 36.2, 31.0, 0, 0.4);
   // level 2/3/summit details
   put(P.bench(), 25.4, 22.0, -0.2, 0.4);
-  put(P.signpost('磨坊'), 38.4, 25.8, 0, 0.15);
+  put(P.signpost('磨坊'), 37.4, 24.4, 0, 0.15);
   put(P.signpost('古燈林'), 17.6, 13.0, 0, 0.15);
   put(P.signpost('山頂 · 回音鐘'), 14.2, 6.0, 0, 0.15);
   put(P.bench(), 29.0, 3.4, 0.3, 0.4);

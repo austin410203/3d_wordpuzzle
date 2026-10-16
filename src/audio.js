@@ -18,7 +18,7 @@ export class Audio {
     // ambience: wind + water
     this.wind = this.loopNoise(380, 0.05, 'lowpass');
     this.waterN = this.loopNoise(900, 0.0, 'bandpass', 0.6);
-    this.t0 = C.currentTime; this.nextNote = C.currentTime + 0.5; this.step = 0; this.bar = 0;
+    this.t0 = C.currentTime; this.nextNote = C.currentTime + 0.5; this.mstep = 0; this.bar = 0;
     this.nextBird = C.currentTime + 2;
   }
   impulse(sec, decay) {
@@ -104,21 +104,21 @@ export class Audio {
     while (this.nextNote < t + 0.3) {
       const at = this.nextNote - t;
       const barRoot = prog[this.bar % 4];
-      if (this.step % 16 === 0) { // pad chord
+      if (this.mstep % 16 === 0) { // pad chord
         const r = root / 2 * 2 ** (this.semi(scale, barRoot) / 12);
         [0, 7, 16].forEach(s => this.tone(r * 2 ** (s / 12), beat * 15, { type: 'triangle', vol: cave ? 0.025 : 0.03, at, bus: this.musBus, verb: 0.6, attack: 0.8 }));
       }
       const pat = cave ? [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0] : [1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0];
-      if (pat[this.step % 16] && Math.random() < 0.9) {
+      if (pat[this.mstep % 16] && Math.random() < 0.9) {
         const deg = barRoot + Math.floor(Math.random() * 6);
         const f = root * 2 ** (this.semi(scale, deg) / 12);
         this.tone(f, beat * 2.5, { type: 'triangle', vol: 0.05, at, bus: this.musBus, verb: 0.3 });
         const s = this.ctx.createGain(); void s;
         this.tone(f, beat * 2.5, { type: 'sine', vol: 0.02, at: at + 0.001, bus: this.delay, verb: 0 });
       }
-      if (!cave && this.step % 8 === 4 && Math.random() < 0.5) this.tone(root / 2 * 2 ** (this.semi(scale, barRoot) / 12), beat * 3, { type: 'sine', vol: 0.06, at, bus: this.musBus, verb: 0.1 });
-      this.nextNote += beat; this.step++;
-      if (this.step % 16 === 0) this.bar++;
+      if (!cave && this.mstep % 8 === 4 && Math.random() < 0.5) this.tone(root / 2 * 2 ** (this.semi(scale, barRoot) / 12), beat * 3, { type: 'sine', vol: 0.06, at, bus: this.musBus, verb: 0.1 });
+      this.nextNote += beat; this.mstep++;
+      if (this.mstep % 16 === 0) this.bar++;
     }
   }
   semi(scale, deg) { const n = scale.length, o = Math.floor(deg / n); return scale[((deg % n) + n) % n] + 12 * o; }

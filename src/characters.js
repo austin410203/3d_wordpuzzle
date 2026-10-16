@@ -61,9 +61,10 @@ export function buildCharacter(look) {
   const head = new THREE.Group(); head.position.y = 1.2; body.add(head);
   const skull = mesh(new THREE.SphereGeometry(0.32, 10, 8), L.skin, 0, 0.06, 0); skull.scale.set(1, 0.95, 0.95); head.add(skull);
   // hair (back + top shell)
-  const hair = mesh(new THREE.SphereGeometry(0.345, 10, 8, Math.PI * 0.08, Math.PI * 1.84, 0, Math.PI * 0.62), L.hair, 0, 0.07, -0.01);
+  const hair = mesh(new THREE.SphereGeometry(0.345, 10, 8, Math.PI * 0.36, Math.PI * 1.28, 0, Math.PI * 0.62), L.hair, 0, 0.07, -0.01);
   hair.rotation.y = Math.PI; head.add(hair);
-  const fringe = mesh(B(0.5, 0.12, 0.1), L.hair, 0, 0.26, 0.26); fringe.rotation.x = -0.4; head.add(fringe);
+  head.add(mesh(new THREE.SphereGeometry(0.35, 10, 4, 0, Math.PI * 2, 0, Math.PI * 0.3), L.hair, 0, 0.07, -0.01));
+  const fringe = mesh(B(0.46, 0.1, 0.12), L.hair, 0, 0.3, 0.22); fringe.rotation.x = -0.5; head.add(fringe);
   // face
   for (const sx of [-1, 1]) {
     head.add(mesh(B(0.06, 0.09, 0.03), 0x241812, sx * 0.11, 0.06, 0.3));
@@ -93,7 +94,7 @@ export function buildCharacter(look) {
   }
   if (hat) head.add(hat);
   if (L.stoop) { torso.rotation.x = L.stoop; head.position.z = 0.08; }
-  body.scale.setScalar(s);
+  body.scale.setScalar(s * 1.18);
   // optional held item (fishing rod)
   const rod = new THREE.Group();
   rod.add(mesh(new THREE.CylinderGeometry(0.018, 0.025, 1.6, 4), 0x7a5232, 0, 0.8, 0));

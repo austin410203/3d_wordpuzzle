@@ -68,5 +68,6 @@ async function boot() {
   requestAnimationFrame(loop);
   addEventListener('resize', () => pr.resize());
   game.showTitle();
+  if (location.search.includes('debug')) import('./debug.js').then(m => m.installDebug(game));
 }
 boot().catch(e => { console.error(e); document.getElementById('tload').textContent = '載入失敗:' + e.message; });
