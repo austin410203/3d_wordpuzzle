@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>楓嶺 · 回音鐘 Maple Ridge</title>
+  <meta name="description" content="像素風解謎探險:回到爺爺的楓嶺,推石、釣魚、修水車、點古燈,登頂敲響回音鐘。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+TC:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/style.css" />
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="goal"><div class="lbl">目標</div><div id="goal-text"></div></div>
+    <div id="counters">
+      <div class="ctr"><img id="ic-leaf" alt="" /><span id="n-leaf">0</span><small>/20</small></div>
+      <div class="ctr"><img id="ic-card" alt="" /><span id="n-card">0</span><small>/5</small></div>
+      <div class="ctr"><img id="ic-fish" alt="" /><span id="n-fish">0</span><small>/6</small></div>
+    </div>
+    <div id="area"></div>
+    <div id="compass" class="hidden"><div id="compass-needle"></div></div>
+    <div id="prompt" class="hidden"><span class="key">E</span><span id="prompt-text"></span></div>
+    <div id="toast"></div>
+    <div id="inv"></div>
+  </div>
+
+  <div id="dialog" class="hidden">
+    <div id="portrait-wrap"><canvas id="portrait" width="48" height="48"></canvas></div>
+    <div id="dlg-body">
+      <div id="dlg-name"></div>
+      <div id="dlg-text"></div>
+      <div id="dlg-choices"></div>
+    </div>
+    <div id="dlg-next">▼</div>
+  </div>
+
+  <div id="fishing" class="hidden">
+    <div id="fish-title">釣魚中…</div>
+    <div id="fish-bar"><div id="fish-zone"></div><div id="fish-mark"></div></div>
+    <div id="fish-hint">等浮標下沉,按 <b>E</b>!</div>
+    <div id="fish-pips"></div>
+  </div>
+
+  <div id="journal" class="hidden">
+    <div class="jbook">
+      <div class="jtabs">
+        <button data-tab="quest" class="on">旅程</button>
+        <button data-tab="items">收藏</button>
+        <button data-tab="map">地圖</button>
+        <button data-tab="opts">設定</button>
+      </div>
+      <div class="jpage" id="jp-quest"></div>
+      <div class="jpage hidden" id="jp-items"></div>
+      <div class="jpage hidden" id="jp-map"><canvas id="mapcv" width="448" height="384"></canvas></div>
+      <div class="jpage hidden" id="jp-opts"></div>
+      <div class="jfoot">Tab / J 關閉 · Esc 暫停</div>
+    </div>
+  </div>
+
+  <div id="title">
+    <div class="tcard">
+      <div class="tlogo"><span class="t1">楓嶺</span><span class="t2">回音鐘</span></div>
+      <div class="tsub">MAPLE RIDGE · THE ECHO BELL</div>
+      <div id="tload">正在種樹… <span id="tload-n"></span></div>
+      <div id="tbtns" class="hidden">
+        <button id="btn-continue" class="hidden">繼續旅程</button>
+        <button id="btn-new">新的旅程</button>
+      </div>
+      <div class="tkeys"><b>WASD/方向鍵</b> 移動 · <b>E/空白</b> 互動、對話、推 · <b>Shift</b> 奔跑 · <b>Tab/J</b> 手帳 · <b>R</b> 重置謎題</div>
+    </div>
+  </div>
+
+  <div id="fade"></div>
+  <div id="caption" class="hidden"></div>
+  <div id="ending" class="hidden"><div id="ending-inner"></div></div>
+
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="knob"></div></div>
+    <div id="tbtn-a" class="tb">E</div>
+    <div id="tbtn-b" class="tb small">跑</div>
+    <div id="tbtn-m" class="tb small">帳</div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
