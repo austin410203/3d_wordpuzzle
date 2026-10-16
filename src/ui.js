@@ -78,9 +78,13 @@ export class UI {
 
   // ---------------- dialogue
   say(steps, npc) {
+    if (this.dlg) { // never clobber an open dialogue: queue behind it
+      const prev = this.dlg.res;
+      return new Promise(res => { this.dlg.res = () => { prev(); setTimeout(() => this.say(steps, npc).then(res), 0); }; });
+    }
     return new Promise(res => {
       this.dlg = { steps: [...steps], npc, res, i: -1, text: '', shown: 0, choice: null };
-      $('dialog').classList.remove('hidden');
+      $('dialog').classList.remove('hidden'); document.body.classList.add('dlg-open');
       this.g.audio.blip();
       this.next();
     });
@@ -132,7 +136,10 @@ export class UI {
   }
   close() {
     const d = this.dlg; this.dlg = null;
-    $('dialog').classList.add('hidden');
+    $('dialog').classList.add('hidden'); document.body.classList.remove('dlg-open');
+    // the key that closed the dialogue must not also trigger the next interaction
+    this.g.input.pressed.clear();
+    this.g.blockInteract();
     d?.res();
   }
   updateDialog(dt, input) {

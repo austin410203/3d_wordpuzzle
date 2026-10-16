@@ -50,7 +50,7 @@ export class Game {
     this.cam.copy(this.player.pos);
     this.ui.refreshHUD();
     if (this.input.touch) {
-      this.$('touch').classList.remove('hidden');
+      this.$('touch').classList.remove('hidden'); document.body.classList.add('touch');
       this.input.bindTouch(this.$('stick'), this.$('knob'), this.$('tbtn-a'), this.$('tbtn-b'), this.$('tbtn-m'));
     }
   }
@@ -87,6 +87,17 @@ export class Game {
     });
   }
   uiBusy() { return this.ui.busy(); }
+  // after a dialogue / fishing / cutscene: wait for the action key to be released + a short pause
+  blockInteract(ms = 450) {
+    this.interactAfter = performance.now() + ms; this.needRelease = true;
+    // the thing we just used stays quiet until the player walks away from it
+    if (this.activeInter) this.quiet = { it: this.activeInter, pos: this.player.pos.clone() };
+    this.activeInter = null;
+  }
+  canInteract() {
+    if (this.needRelease && !this.input.down('KeyE', 'Space', 'Enter')) this.needRelease = false;
+    return !this.needRelease && performance.now() >= (this.interactAfter || 0);
+  }
   saveSettings() { localStorage.setItem('mapleRidgeSettings', JSON.stringify(this.audio.vol)); }
   save() {
     if (!this.started) return;
@@ -594,6 +605,7 @@ export class Game {
     await this.ui.fade(true);
     this.player.place(to.x, to.z, face);
     this.cam.copy(this.player.pos);
+    this.quietHere();
     this.inCave = intoCave;
     await sleep(150);
     await this.ui.fade(false);
@@ -693,7 +705,7 @@ export class Game {
     }
     this.ui.fishUpdate(f);
   }
-  endFishing() { this.fishing = null; this.bobber.visible = false; this.player.forceMode = null; this.ui.fishPanel(false); }
+  endFishing() { this.blockInteract(); this.fishing = null; this.bobber.visible = false; this.player.forceMode = null; this.ui.fishPanel(false); }
 
   // ---------------- sokoban
   tryPush(dt) {
@@ -905,7 +917,9 @@ export class Game {
       });
     }
     p.face = face; p.lock = 0; p.forceMode = null;
+    this.quietHere();
   }
+  quietHere() { this.needRelease = true; this.interactAfter = performance.now() + 300; this.quiet = { all: true, pos: this.player.pos.clone() }; this.activeInter = null; }
 
   // ======================================================================================
   showTitle() {
@@ -991,12 +1005,14 @@ export class Game {
     if (free) {
       for (const it of this.inter) {
         if (!it.r || (it.on && !it.on())) continue;
+        if (this.quiet && (this.quiet.all || this.quiet.it === it)) continue;
         const ip = it.pos, d = Math.hypot(ip.x - p.pos.x, ip.z - p.pos.z);
         if (d < it.r && Math.abs((ip.y || p.pos.y) - p.pos.y) < 2.2 && (!best || d < best.d)) best = { it, d };
       }
     }
     this.ui.prompt(best ? best.it.label() : null);
-    if (best && inp.hit('KeyE', 'Space', 'Enter')) best.it.use();
+    if (this.quiet && Math.hypot(p.pos.x - this.quiet.pos.x, p.pos.z - this.quiet.pos.z) > 0.9) this.quiet = null;
+    if (best && this.canInteract() && inp.hit('KeyE', 'Space', 'Enter')) { this.activeInter = best.it; best.it.use(); }
     if (free && inp.hit('KeyR')) this.resetPuzzle();
     if (free && inp.hit('KeyZ') && this.state.upgrades.scope) { this.pr.zoom = this.pr.zoom === 1 ? 0.62 : 1; this.pr.updateFrustum(); }
     if (free && inp.hit('KeyM')) { this.audio.musicOn = !this.audio.musicOn; this.toast(this.audio.musicOn ? '音樂:開' : '音樂:關'); }

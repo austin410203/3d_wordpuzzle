@@ -107,3 +107,35 @@ canvas#c { position: fixed; inset: 0; display: block; image-rendering: pixelated
   #dlg-text { font-size: 15px; }
   #compass { top: 120px; }
 }
+
+/* ---------- touch / phone layout: keep controls small, translucent, out of the play area ---------- */
+body.touch #stick { left: 14px; bottom: 14px; width: 96px; height: 96px; background: rgba(243,230,200,.12); border: 2px solid rgba(243,230,200,.35); }
+body.touch #knob { width: 40px; height: 40px; margin: -20px; background: rgba(243,230,200,.45); border: 2px solid rgba(90,58,34,.6); }
+body.touch .tb { width: 56px; height: 56px; right: 16px; bottom: 22px; font-size: 20px; background: rgba(243,230,200,.4); border: 2px solid rgba(90,58,34,.55); color: rgba(58,42,30,.9); }
+body.touch .tb.small { width: 40px; height: 40px; font-size: 13px; }
+body.touch #tbtn-b { right: 82px; bottom: 14px; }
+body.touch #tbtn-m { right: 22px; bottom: auto; top: 12px; }
+body.touch .tb:active, body.touch #stick:active { background-color: rgba(243,230,200,.7); }
+body.touch #goal { left: 8px; top: 8px; max-width: 42vw; padding: 3px 7px 4px; border-width: 2px; background: rgba(243,230,200,.78); box-shadow: 0 0 0 1px #2a1a10; }
+body.touch #goal .lbl { display: none; }
+body.touch #goal-text { font-size: 12px; line-height: 1.35; }
+body.touch #counters { right: 70px; top: 8px; flex-direction: row; gap: 4px; }
+body.touch .ctr { font-size: 12px; padding: 2px 5px; border-width: 2px; box-shadow: none; background: rgba(243,230,200,.78); }
+body.touch .ctr img { width: 14px; height: 14px; }
+body.touch .ctr small { display: none; }
+body.touch #inv { left: 8px; bottom: auto; top: 46px; gap: 3px; }
+body.touch .slot { width: 26px; height: 26px; border-width: 2px; box-shadow: none; background: rgba(243,230,200,.7); }
+body.touch .slot img { width: 20px; height: 20px; }
+body.touch #compass { top: 40px; right: 70px; width: 40px; height: 40px; border-width: 2px; }
+body.touch #compass-needle { height: 16px; margin-top: -16px; width: 4px; margin-left: -2px; }
+body.touch #prompt { bottom: 20px; font-size: 13px; padding: 3px 8px; border-width: 2px; }
+body.touch #area { font-size: 20px; top: 14%; }
+body.touch #area small { font-size: 11px; }
+body.touch #toast { top: 52px; } body.touch .tst { font-size: 12px; padding: 4px 9px; }
+body.touch #dialog { bottom: 6px; width: min(640px, 70vw); min-height: 0; padding: 7px 10px 9px; gap: 8px; border-width: 3px; }
+body.touch #portrait-wrap { width: 52px; height: 52px; } body.touch #portrait { width: 46px; height: 46px; }
+body.touch #dlg-name { font-size: 12px; margin-bottom: 3px; } body.touch #dlg-text { font-size: 14px; min-height: 0; line-height: 1.5; }
+body.touch #dlg-choices button { font-size: 13px; padding: 3px 8px; }
+body.touch #fishing { top: 10%; width: min(320px, 60vw); padding: 6px 10px; } body.touch #fish-title { font-size: 13px; margin-bottom: 4px; } body.touch #fish-hint { font-size: 11px; }
+body.touch.dlg-open #stick, body.touch.dlg-open #tbtn-b, body.touch.dlg-open #tbtn-m { opacity: .25; }
+@media (orientation: portrait) { body.touch #dialog { width: 94vw; bottom: 130px; } body.touch #goal { max-width: 50vw; } body.touch #prompt { bottom: 118px; } }

@@ -97,6 +97,7 @@ export class PixelRenderer {
     const w = window.innerWidth, h = window.innerHeight;
     this.ps = Math.max(1, Math.round(h / 330));
     if (w < 700) this.ps = Math.max(1, Math.round(h / 300));
+    if (h > w) this.ps = Math.max(1, Math.round(w / 300));
     this.W = Math.ceil(w / this.ps); this.H = Math.ceil(h / this.ps);
     const RW = this.W + 2, RH = this.H + 2;
     this.renderer.setSize(w, h, false);

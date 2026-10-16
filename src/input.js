@@ -12,11 +12,11 @@ export class Input {
     });
     addEventListener('keyup', e => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
-    this.touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    this.touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || location.search.includes('touch');
   }
   bindTouch(stick, knob, btnA, btnB, btnM) {
     let id = null, cx = 0, cy = 0;
-    const R = 46;
+    const R = 34;
     stick.addEventListener('pointerdown', e => { id = e.pointerId; const r = stick.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2; stick.setPointerCapture(id); move(e); });
     const move = e => {
       if (e.pointerId !== id) return;
