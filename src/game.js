@@ -346,6 +346,7 @@ export class Game {
     // truck
     const tp = this.state.truck || [6.2 * S, 46.0 * S, Math.PI / 2];
     this.truck = new Truck(this, tp[0], tp[1], tp[2]);
+    if (this.truck.snapToRoad() === false && this.world.roadInfo(this.truck.pos.x, this.truck.pos.z).d > 0.3) { this.truck.pos.set(6.2 * S, 0, 46.0 * S); this.truck.heading = Math.PI / 2; this.truck.sync(); }
     this.inter.push({ get pos() { return game.truck.pos; }, r: 2.3, on: () => !this.truck.driving, label: () => this.has('truckKey') ? '開「小藍」' : '藍色小貨車', use: () => this.enterTruck() });
     // forage nodes: pine cones, berries, mushrooms near the trails (they grow back)
     const r = mulberry(99), F = [];
@@ -403,7 +404,7 @@ export class Game {
   }
   async enterTruck() {
     if (!this.has('truckKey')) return this.ui.say([['小禾', '爺爺的藍色小貨車「小藍」。車門鎖著——鑰匙大概在爺爺家裡。']], 'me');
-    const t = this.truck; t.driving = true; this.player.model.visible = false;
+    const t = this.truck; t.snapToRoad(); t.driving = true; this.player.model.visible = false;
     this.pr.zoom = 0.8; this.pr.updateFrustum();
     this.audio.thunk(); this.quietHere();
     if (!this.flags.drove) { this.flags.drove = 1; this.toast('開車:往哪推就往哪開 · Shift 加速 · H 喇叭 · E 下車'); }

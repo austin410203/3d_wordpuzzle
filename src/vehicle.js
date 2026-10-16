@@ -57,6 +57,20 @@ export class Truck {
     this.coll = game.world.colliders.add({ x, z, r: 1.15, truck: true });
     this.sync();
   }
+  // put the truck back on the nearest road point (used for saves from before roads existed)
+  snapToRoad() {
+    const ri = this.g.world.roadInfo(this.pos.x, this.pos.z);
+    if (ri.d <= 0.3) return false;
+    const hd = Math.atan2(ri.tx, ri.tz);
+    for (const [x, z, h] of [[ri.cx, ri.cz, hd], [ri.cx, ri.cz, hd + Math.PI]]) {
+      const old = [this.pos.x, this.pos.z, this.heading];
+      this.pos.x = x; this.pos.z = z; this.heading = h;
+      this.pos.y = this.g.player.surfaceAt(x, z) ?? this.pos.y;
+      if (this.fits(x, z, h)) { this.sync(); return true; }
+      [this.pos.x, this.pos.z, this.heading] = old;
+    }
+    return false;
+  }
   localToWorld(x, y, z) {
     const c = Math.cos(this.heading), s = Math.sin(this.heading);
     return new THREE.Vector3(this.pos.x + x * c + z * s, this.pos.y + y, this.pos.z - x * s + z * c);
@@ -68,11 +82,14 @@ export class Truck {
     const c = Math.cos(hd), s = Math.sin(hd);
     const skip = (k) => k === this.coll || k.bush || (k.r != null && k.r <= 0.2);
     const hc = p.surfaceAt(this.pos.x, this.pos.z) ?? this.pos.y;
+    // off the road (e.g. an old save): any move that doesn't take it further from the road is fine
+    const slack = Math.max(0, w.roadInfo(this.pos.x, this.pos.z).d);
     let lo = 1e9, hi = -1e9;
     for (const f of [-1.05, 0, 1.05]) {
       const cx = x + f * s, cz = z + f * c;
       if (w.colliders.hit(cx, cz, 0.6, skip)) return false;
-      if (w.roadInfo(cx, cz).d > (f ? Math.max(margin, 1.1) : margin)) { this.offRoad = true; return false; } // nose/tail may hang over the verge
+      const lim = Math.max(f ? Math.max(margin, 1.1) : margin, slack + (f ? 1.1 : 0.02));
+      if (w.roadInfo(cx, cz).d > lim) { this.offRoad = true; return false; } // nose/tail may hang over the verge
       for (const [a, b] of [[0, 0], [0.55, 0], [-0.55, 0]]) {
         const ax = cx + a * c, az = cz - a * s;
         const h = p.surfaceAt(ax, az);
