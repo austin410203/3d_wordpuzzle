@@ -32,7 +32,7 @@ export class Colliders {
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
       const a = this.cells.get(this.key(i, j)); if (!a) continue;
       for (const c of a) {
-        if (c === ignore || c.off) continue;
+        if (c === ignore || c.off || (typeof ignore === 'function' && ignore(c))) continue;
         if (c.r != null) { const dx = x - c.x, dz = z - c.z, rr = r + c.r; if (dx * dx + dz * dz < rr * rr) return c; }
         else if (x + r > c.x0 && x - r < c.x1 && z + r > c.z0 && z - r < c.z1) return c;
       }
@@ -45,7 +45,7 @@ export function buildWorld(scene, gradient, U) {
   const g = MAP.buildCoarse();
   const lvl = (c, r) => g.level[g.I(c, r)], wat = (c, r) => g.water[g.I(c, r)] === 1, stn = (c, r) => g.stone[g.I(c, r)] === 1;
   const noWarp = (mx, mz) => MAP.NOWARP.some(([c0, r0, c1, r1]) => mx >= c0 && mx < c1 + 1 && mz >= r0 && mz < r1 + 1);
-  const paths = MAP.PATHS.map(p => ({ w: p.w * S, pts: p.pts.map(([x, z, l]) => [x * S, z * S, l * MAP.STEP]) }));
+  const paths = MAP.PATHS.map(p => ({ w: p.w * S, road: !!p.road, pts: p.pts.map(([x, z, l]) => [x * S, z * S, l * MAP.STEP]) }));
   const dirtSpots = [
     [MAP.HOUSES[0].x * S, MAP.HOUSES[0].z * S + 2.2, 2.2], [MAP.HOUSES[1].x * S - 1, MAP.HOUSES[1].z * S + 2, 1.8],
     [36.5 * S, 32.3 * S, 2.6], [40.4 * S, 23.6 * S, 3.2], [MAP.BELL.x * S, MAP.BELL.z * S, 2.6],
@@ -105,6 +105,18 @@ export function buildWorld(scene, gradient, U) {
     }
     return best;
   };
+  // roads the truck may use: distance to the road edge + the road's tangent at the nearest point
+  const roadSegs = segs.filter((sg, i) => paths.find(p => p.pts.includes(sg[0]) && p.road));
+  const roadInfo = (x, z) => {
+    let best = { d: 1e9, tx: 0, tz: 1, cx: x, cz: z };
+    for (const [a, b, w] of roadSegs) {
+      const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1e-6;
+      let t = ((x - a[0]) * dx + (z - a[1]) * dz) / L2; t = Math.max(0, Math.min(1, t));
+      const cx = a[0] + dx * t, cz = a[1] + dz * t, d = Math.hypot(x - cx, z - cz) - w;
+      if (d < best.d) { const L = Math.sqrt(L2); best = { d, tx: dx / L, tz: dz / L, cx, cz }; }
+    }
+    return best;
+  };
   const excl = []; // [x, z, r] world
   for (const [x, z, r] of MAP.CLEARINGS) excl.push([x * S, z * S, r * S]);
   for (const h of MAP.HOUSES) excl.push([h.x * S, h.z * S, Math.max(h.w, h.d) * 0.75 + 1.2]);
@@ -153,7 +165,7 @@ export function buildWorld(scene, gradient, U) {
     const t = { kind, v, x, y: main.heightAt(x, z), z, s, rot: rnd() * 6.28 };
     placed.push(t);
     if (!kind.startsWith('bush')) colliders.add({ x, z, r: 0.42 * s, tree: true });
-    else colliders.add({ x, z, r: 0.35 * s, tree: true });
+    else colliders.add({ x, z, r: 0.35 * s, tree: true, bush: true });
     return true;
   };
   // explicit patch trees
@@ -368,6 +380,7 @@ export function buildWorld(scene, gradient, U) {
 
   return {
     canopies: placed.filter(t => !t.kind.startsWith('bush') && t.kind !== 'pine'),
+    roadInfo,
     scene, main, cave, caveData, g, colliders, dockY: dockY + 0.07, heightAt, T, paths, pathDist, houses, decor, noiseTex, waterMat,
     bounds: { x0: 4.3, x1: MAP.COLS * S - 4, z0: 3.4, z1: MAP.ROWS * S - 0.6 }, PAD,
     put,

@@ -344,7 +344,7 @@ export class Game {
     const game = this;
     this.inter.push({ get pos() { return game.pet.pos; }, r: 1.6, on: () => !this.truck?.driving, label: () => this.pet.label(), use: () => this.pet.interact() });
     // truck
-    const tp = this.state.truck || [3.4 * S, 44.4 * S, 0];
+    const tp = this.state.truck || [6.2 * S, 46.0 * S, Math.PI / 2];
     this.truck = new Truck(this, tp[0], tp[1], tp[2]);
     this.inter.push({ get pos() { return game.truck.pos; }, r: 2.3, on: () => !this.truck.driving, label: () => this.has('truckKey') ? '開「小藍」' : '藍色小貨車', use: () => this.enterTruck() });
     // forage nodes: pine cones, berries, mushrooms near the trails (they grow back)

@@ -60,6 +60,21 @@ export function installDebug(game) {
       }
       return log;
     },
+    // drive the truck through map-unit waypoints; returns stuck events
+    async drivePath(pts, maxSec = 90) {
+      const t = game.truck, log = [];
+      let i = 0, stuck = 0, last = t.pos.clone(), lt = 0;
+      for (let s = 0; s < maxSec && i < pts.length; s += 1 / 30) {
+        const [mx, mz] = pts[i], dx = mx * S - t.pos.x, dz = mz * S - t.pos.z, d = Math.hypot(dx, dz);
+        if (d < 1.6) { i++; continue; }
+        inp.joy.active = true; inp.joy.x = dx / d; inp.joy.y = dz / d;
+        await D.f();
+        if (s - lt > 1) { lt = s; if (t.pos.distanceTo(last) < 0.5) { stuck++; log.push([+(t.pos.x / S).toFixed(1), +(t.pos.z / S).toFixed(1)]); } last.copy(t.pos); }
+        if (stuck > 6) break;
+      }
+      inp.joy.active = false; inp.joy.x = inp.joy.y = 0;
+      return { reached: i, of: pts.length, stuckSec: stuck, at: log.slice(0, 6) };
+    },
     boulders() { return game.boulders.map(b => `${b.id}:${b.c},${b.r}${b.sunk ? 's' : ''}`).join(' '); },
   };
   window.D = D;
