@@ -185,6 +185,12 @@ function dog(ctx) {
 }
 
 const BG = { player: ['#e8f0d0', '#b9cf96'], amei: ['#f2e2f0', '#cfb2d6'], wang: ['#e2eef4', '#a9c4d8'], chen: ['#f6e4cc', '#d9b48a'], song: ['#f2ecd8', '#cfc29c'], yu: ['#fbf0cc', '#e6c87e'], grandpa: ['#efe8d2', '#c9bc92'], cat: ['#fbe9d8', '#e6c0a0'], pet: ['#fdebd0', '#ebc48c'] };
+// Gemini-generated portrait art (assets/portraits/<id>.png); the code-drawn version is the fallback
+const ART = {};
+for (const id of ['player', 'amei', 'wang', 'chen', 'song', 'yu', 'grandpa', 'cat', 'pet']) {
+  const img = new Image(); img.src = `./assets/portraits/${id}.png`; ART[id] = img;
+}
+export function portraitArt(id) { const img = ART[id]; return img && img.complete && img.naturalWidth ? img : null; }
 const cache = {};
 export function portraitURL(id) {
   if (cache[id]) return cache[id];

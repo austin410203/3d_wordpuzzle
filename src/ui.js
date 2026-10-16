@@ -5,7 +5,7 @@ import { buildCharacter, buildCat, LOOKS, initCharacters } from './characters.js
 import { pixelIcon } from './textures.js';
 import * as MAP from './map.js';
 import { ITEMS, CAT_NAMES, icon } from './items.js';
-import { portraitURL, hasPortrait } from './portraits.js';
+import { portraitURL, hasPortrait, portraitArt } from './portraits.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -59,7 +59,8 @@ export class UI {
     if (cv.width !== 192) { cv.width = cv.height = 192; }
     ctx.imageSmoothingEnabled = true;
     if (!id || !hasPortrait(id)) { ctx.fillStyle = '#e8dcc0'; ctx.fillRect(0, 0, 192, 192); return; }
-    ctx.drawImage(portraitURL(id), 0, 0);
+    const art = portraitArt(id);
+    if (art) ctx.drawImage(art, 0, 0, 192, 192); else ctx.drawImage(portraitURL(id), 0, 0);
   }
 
   // ---------------- dialogue
