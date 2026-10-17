@@ -77,7 +77,7 @@ export class Truck {
   }
   // can the truck stand at (x,z) with heading hd? Small things (fence posts, signs, bushes) don't stop it —
   // the terrain check already keeps it on ledges.
-  fits(x, z, hd = this.heading, margin = 1.0) {
+  fits(x, z, hd = this.heading, margin = 2.4) {
     const w = this.g.world, p = this.g.player;
     const c = Math.cos(hd), s = Math.sin(hd);
     const skip = (k) => k === this.coll || k.bush || (k.r != null && k.r <= 0.2);
@@ -87,7 +87,7 @@ export class Truck {
     let lo = 1e9, hi = -1e9;
     for (const f of [-1.05, 0, 1.05]) {
       const cx = x + f * s, cz = z + f * c;
-      if (w.colliders.hit(cx, cz, 0.6, skip)) return false;
+      if (w.colliders.hit(cx, cz, 0.52, skip)) return false;
       const lim = Math.max(f ? Math.max(margin, 1.1) : margin, slack + (f ? 1.1 : 0.02));
       if (w.roadInfo(cx, cz).d > lim) { this.offRoad = true; return false; } // nose/tail may hang over the verge
       for (const [a, b] of [[0, 0], [0.55, 0], [-0.55, 0]]) {
@@ -131,13 +131,13 @@ export class Truck {
         if (this.g.player.surfaceAt(qx, qz) != null) { this.pos.x = qx; this.pos.z = qz; }
         if (ri.d < 0.6 && Math.abs(Math.sin(this.heading - Math.atan2(ri.tx, ri.tz))) > 0.3) this.heading += Math.sign(Math.sin(Math.atan2(ri.tx, ri.tz) - this.heading)) * dt * 1.5;
       }
-      if (this.backT > 0) {                       // auto back-up when wedged (rare)
-        this.speed = Math.max(-3.5, this.speed - dt * 14);
+      if (this.backT > 0) {                       // auto escape when wedged: go the other way briefly
+        this.speed += ((this.escDir || -1) * 4 - this.speed) * Math.min(1, dt * 10);
       } else if (a.mag > 0.12) {
         // push the stick where you want to go: the truck turns there (even from a standstill)
         let want = Math.atan2(a.x, a.z);
         const ri = this.g.world.roadInfo(this.pos.x, this.pos.z);
-        if (ri.d < 1.2) { // gentle road assist: lean toward the road's direction, never override the player
+        if (ri.d < 1.2 && !this.reversing) { // gentle road assist: lean toward the road's direction, never override the player
           let tx = ri.tx, tz = ri.tz;
           if (tx * a.x + tz * a.z < 0) { tx = -tx; tz = -tz; }
           const dot = (tx * a.x + tz * a.z) / a.mag;
@@ -150,15 +150,23 @@ export class Truck {
           }
         }
         let d = want - this.heading; d = Math.atan2(Math.sin(d), Math.cos(d));
+        // pull the stick (roughly) backwards → reverse right away, tail swinging toward the stick
+        this.reversing = this.reversing ? Math.abs(d) > 1.55 : Math.abs(d) > 1.95;
+        if (this.reversing) { d = Math.atan2(Math.sin(want + Math.PI - this.heading), Math.cos(want + Math.PI - this.heading)); }
         const rate = 3.6 * (0.75 + 0.25 * Math.min(1, Math.abs(this.speed) / 4));
         const step = Math.sign(d) * Math.min(Math.abs(d), rate * dt);
-        if (this.fits(this.pos.x, this.pos.z, this.heading + step, 1.5)) this.heading += step;
-        else if (this.fits(this.pos.x, this.pos.z, this.heading + step * 0.4, 1.5)) this.heading += step * 0.4;
-        this.steer = step / Math.max(dt, 1e-3) / 3.6;
-        // throttle follows the stick, easing off while the nose is still swinging round
+        if (this.fits(this.pos.x, this.pos.z, this.heading + step, 2.8)) this.heading += step;
+        else if (this.fits(this.pos.x, this.pos.z, this.heading + step * 0.4, 2.8)) this.heading += step * 0.4;
+        this.steer = step / Math.max(dt, 1e-3) / 3.6 * (this.reversing ? -1 : 1);
         const align = Math.max(0, Math.cos(d));
-        const target = maxV * a.mag * (0.15 + 0.85 * align * align);
-        this.speed += (target - this.speed) * Math.min(1, dt * (target > this.speed ? 2.2 : 4));
+        if (this.reversing) {
+          const target = -6 * a.mag * (0.35 + 0.65 * align);
+          this.speed += (target - this.speed) * Math.min(1, dt * 7);          // snappy
+        } else {
+          // throttle follows the stick, easing off while the nose is still swinging round
+          const target = maxV * a.mag * (0.15 + 0.85 * align * align);
+          this.speed += (target - this.speed) * Math.min(1, dt * (target > this.speed ? (this.speed < 0 ? 7 : 2.4) : 4));
+        }
       } else { this.speed *= Math.pow(0.08, dt); this.steer *= 0.8; if (Math.abs(this.speed) < 0.05) this.speed = 0; }
       const steps = Math.max(1, Math.ceil(Math.abs(this.speed) * dt / 0.12));
       for (let i = 0; i < steps; i++) {
@@ -167,7 +175,7 @@ export class Truck {
       }
       // stuck for a moment while the player is pushing → back up briefly on its own
       const moved = Math.hypot(this.pos.x - p0x, this.pos.z - p0z);
-      if (a.mag > 0.3 && moved < 0.01 && !(this.backT > 0)) { this.stuckT = (this.stuckT || 0) + dt; if (this.stuckT > 1.2) { this.backT = 0.55; this.stuckT = 0; } }
+      if (a.mag > 0.3 && moved < 0.01 && !(this.backT > 0)) { this.stuckT = (this.stuckT || 0) + dt; if (this.stuckT > 0.5) { this.escDir = this.reversing ? 1 : -1; this.backT = 0.45; this.stuckT = 0; } }
       else this.stuckT = 0;
       if (this.backT > 0) this.backT -= dt;
       if (this.offRoad && a.mag > 0.3 && this.stuckT > 0.5 && (!this.roadMsgT || performance.now() - this.roadMsgT > 8000)) { this.roadMsgT = performance.now(); this.g.toast('小藍只能開在車道上(村子裡的大路)'); }
