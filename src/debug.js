@@ -75,6 +75,61 @@ export function installDebug(game) {
       inp.joy.active = false; inp.joy.x = inp.joy.y = 0;
       return { reached: i, of: pts.length, stuckSec: stuck, at: log.slice(0, 6) };
     },
+    // ---- full playthrough from a fresh save; results in window.__run
+    async use() { await D.press(); await D.realWait(900); for (let i = 0; i < 40; i++) { await D.talk(); await new Promise(r => setTimeout(r, 120)); await D.tick(0.1); if (!game.ui.dlg && i > 2) break; } },
+    async realWait(ms) { const t0 = performance.now(); while (performance.now() - t0 < ms) { await D.f(); await new Promise(r => setTimeout(r, 30)); } },
+    async fullRun(from) {
+      const g = game, run = window.__run = { log: [], ok: false };
+      const step = (name, cond, extra = '') => { run.log.push(`${cond ? 'OK ' : 'FAIL'} ${name}${extra ? ' ' + extra : ''}`); if (!cond) throw new Error('failed at ' + name); };
+      const near = async (id, dz = 0.7) => { const n = g.npcs[id]; return D.go(n.pos.x / S, n.pos.z / S + dz, 15); };
+      const C = (c, r) => [150 + c + 0.5, r + 0.5];
+      try {
+        if (!g.started) await g.begin(false);
+        await D.go(10.6, 46.0); await D.use(); step('mailbox postcard', !!g.state.postcards.p1);
+        await D.path([[16, 45.6], [19, 43.2]]); await near('amei'); await D.use(); step('Ah-Mei gives cat quest', !!g.flags.catQuest);
+        await near('wang'); await D.use(); step('Wang gives rod', g.has('rod'));
+        await D.path([[22, 42.6], [24.6, 42.6], [26.4, 42.6]]); await D.press();
+        for (let n = 0; n < 3000 && g.fishCount() < 1; n++) { const f = g.fishing; if (!f) { await D.press(); continue; } if (f.phase === 'bite') { await D.press(); continue; } if (f.phase === 'reel' && f.mark > f.zone[0] + 0.02 && f.mark < f.zone[1] - 0.02) { await D.press(); continue; } await D.f(); }
+        if (g.fishing) g.endFishing();
+        step('caught a fish', g.fishCount() >= 1);
+        await D.path([[24.6, 42.6], [22, 43.4], [23, 45.6], [28, 46.6], [34, 46.8], [38, 45.4]]); await near('cat'); await D.use(); step('cat follows', g.catFollowing());
+        await D.path([[34, 46.8], [28, 46.6], [23, 45.6], [21, 43]]); await near('amei'); await D.realWait(400); await D.use(); step('cat home, key', g.has('key'));
+        await D.path([[19, 43.2], [16, 45.6], [13.6, 45.7]]); await D.use(); await D.realWait(1500); step('enter shed', g.player.pos.x > 490);
+        const R = g.rooms.shed; await D.go((R.ox + 0.9) / S, (R.oz - 0.9) / S, 8); await D.use(); step('gloves', g.has('gloves'));
+        await D.go(R.ox / S, (R.oz + R.d / 2 - 0.6) / S, 8); await D.use(); await D.realWait(1500); step('leave shed', g.player.pos.x < 250);
+        await D.path([[16, 45.6], [19, 43.2], [18.3, 41.4], [18.4, 39.6], [15, 39.5]]);
+        for (let i = 0; i < 8 && !g.flags.tutorialDone; i++) await D.hold(-1, 0, 1.5);
+        step('tutorial boulder', !!g.flags.tutorialDone);
+        await D.path([[10.5, 39.5], [10.5, 37.6], [9.6, 36.75], [4.4, 36.75], [3.3, 35.6], [3.4, 33.2], [6, 31.8], [10, 31.2], [13, 30.6], [16, 31.6], [19.5, 31.5]]);
+        step('reached creek west bank', Math.abs(g.player.pos.x / S - 19.5) < 1);
+        const mv = [[[6, 2], [0, 1]], [[5, 4], [0, -1]], [[6, 3], [0, 1]], [[5, 3], [1, 0]], [[6, 4], [1, 0]], [[7, 4], [1, 0]], [[8, 4], [1, 0]], [[6, 3], [0, 1]], [[6, 4], [1, 0]], [[9, 4], [1, 0]], [[7, 4], [1, 0]], [[8, 4], [1, 0]], [[9, 4], [1, 0]], [[10, 4], [1, 0]]];
+        const sl = await D.soko(mv, 19, 28, false); step('creek stepping stones', !!g.flags.creekDone, sl[sl.length - 1]);
+        await D.path([[29.5, 32.5], [30.5, 32.5], [32, 32], [34, 31.8]]); await near('chen', 0.8); await D.use(); step('Chen gives rope', g.has('rope'));
+        await D.path([[37.5, 32.2], [36.5, 29.6], [36.5, 28.5]]); await D.use(); step('ladder fixed', !!g.flags.LD1);
+        await D.press(); await D.realWait(3500); step('climbed to level 2', g.player.pos.y > 8);
+        await D.path([[39, 25.0], [40.0, 25.2]]); await near('song', 0.8); await D.use(); step('met Song', !!g.flags.metSong);
+        const lever = async (i) => { await D.go(38.05, [43.4, 44.8, 46.2, 47.6][i] / S, 8); await D.press(); await D.realWait(700); };
+        await D.path([[39.4, 25.2], [38.05, 25.0]]); await lever(2); await lever(0); await D.realWait(1500); await D.talk();
+        step('mill wheel turning', !!g.flags.millFixed, JSON.stringify(g.state.gates));
+        await D.path([[38.05, 25.0], [39.4, 25.2]]); await near('song', 0.8); await D.use(); step('lantern', g.has('lantern'));
+        await D.path([[41.2, 24.4], [42.6, 22.6], [42.6, 19.6], [42.5, 18.6]]); await D.press(); await D.realWait(5000); step('lift up', g.player.pos.y > 12);
+        await D.path([[41.6, 15.6], [40, 14.6], [36, 13.8], [31, 14.4], [26, 13.4], [21.5, 14.6], [16.5, 13.6], [12.5, 12.8]]);
+        const L = [[13.6, 15.4], [5.0, 12.0], [14.6, 11.4], [7.6, 14.2]];
+        for (const i of [0, 1, 2, 3]) { await D.go(L[i][0], L[i][1] + 0.55, 12); await D.press(); await D.realWait(600); }
+        await D.realWait(4000); step('lanterns → door open', !!g.flags.doorOpen);
+        await D.go(12.5, 9.7); await D.press(); await D.realWait(1600); step('enter cave', g.player.pos.x > 250 && g.player.pos.x < 490);
+        const cm = [[[3, 4], [0, -1]], [[2, 4], [1, 0]], [[3, 4], [1, 0]], [[4, 4], [0, -1]], [[3, 3], [0, 1]], [[3, 4], [1, 0]], [[4, 3], [1, 0]], [[5, 3], [1, 0]], [[4, 4], [0, -1]], [[6, 3], [1, 0]], [[4, 3], [1, 0]], [[5, 3], [1, 0]], [[7, 3], [0, -1]], [[6, 3], [1, 0]], [[7, 3], [1, 0]], [[8, 3], [0, -1]], [[7, 2], [0, -1]]];
+        await D.soko(cm, 3, 5, true); step('cave gate open', !!g.flags.gateOpen);
+        await D.path([C(6, 9), C(5, 9), C(4, 9), C(4, 8), C(4, 7), C(3, 7), C(2, 7), C(1, 7), C(1, 4), C(1, 3), C(3, 3)]); await D.use(); step('hammer', g.has('hammer'));
+        await D.path([C(5, 1), C(12, 1), [163.4, 1.5]]); await D.press(); await D.realWait(1800); await D.talk(); step('summit', g.player.pos.y > 16);
+        await D.path([[16, 4.6], [21, 4.4], [25.5, 3.9]]); await D.press();
+        for (let i = 0; i < 120 && !g.flags.rang; i++) { g._advance = true; await D.realWait(500); }
+        step('bell rung / ending', !!g.flags.rang);
+        run.ok = true;
+      } catch (e) { run.err = e.message; }
+      run.done = true;
+      return run;
+    },
     boulders() { return game.boulders.map(b => `${b.id}:${b.c},${b.r}${b.sunk ? 's' : ''}`).join(' '); },
   };
   window.D = D;

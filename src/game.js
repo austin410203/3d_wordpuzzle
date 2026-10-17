@@ -140,7 +140,7 @@ export class Game {
       sc.add(model);
       const npc = { id: n.id, model, home: V(x, 0, z), pos: V(x, H(x, z), z), face: 0, coll: w.colliders.add({ x, z, r: n.id === 'cat' ? 0.3 : 0.38, npc: n.id }) };
       this.npcs[n.id] = npc;
-      addI({ npc: n.id, get pos() { return npc.pos; }, r: 2.0, label: () => n.id === 'cat' ? '摸摸貓' : `和${NAMES[n.id]}說話`, use: () => this.talkTo(n.id) });
+      addI({ npc: n.id, get pos() { return npc.pos; }, r: 2.0, on: () => !(n.id === 'cat' && this.catFollowing()), label: () => n.id === 'cat' ? '摸摸貓' : `和${NAMES[n.id]}說話`, use: () => this.talkTo(n.id) });
     }
     this.npcs.amei.face = 0.3; this.npcs.wang.face = Math.PI / 2; this.npcs.chen.face = 0.6;
     // ---------- ducks & birds
@@ -355,7 +355,7 @@ export class Game {
     // pet
     this.pet = new Pet(this);
     const game = this;
-    this.inter.push({ get pos() { return game.pet.pos; }, r: 1.6, on: () => !this.truck?.driving, label: () => this.pet.label(), use: () => this.pet.interact() });
+    this.inter.push({ lowPri: true, get pos() { return game.pet.pos; }, r: 1.6, on: () => !this.truck?.driving, label: () => this.pet.label(), use: () => this.pet.interact() });
     // truck
     const tp = this.state.truck || [6.2 * S, 46.0 * S, Math.PI / 2];
     this.truck = new Truck(this, tp[0], tp[1], tp[2]);
@@ -1260,6 +1260,7 @@ export class Game {
       else if (this.ui.journalOpen && inp.hit('Escape')) this.ui.toggleJournal(false);
       else if (!this.ui.journalOpen && inp.hit('Escape')) this.ui.toggleJournal(true);
     }
+    if (this.needRelease && !inp.down('KeyE', 'Space', 'Enter')) this.needRelease = false;
     const free = !this.ui.busy() && p.lock <= 0;
     const driving = this.truck?.driving;
     if (driving) {
@@ -1284,7 +1285,8 @@ export class Game {
         if (!it.r || (it.on && !it.on())) continue;
         if (this.quiet && (this.quiet.all || this.quiet.it === it)) continue;
         const ip = it.pos, d = Math.hypot(ip.x - p.pos.x, ip.z - p.pos.z);
-        if (d < it.r && Math.abs((ip.y || p.pos.y) - p.pos.y) < 2.2 && (!best || d < best.d)) best = { it, d };
+        const score = d + (it.lowPri ? 1.8 : 0);   // the pet trailing behind you never steals the prompt
+        if (d < it.r && Math.abs((ip.y || p.pos.y) - p.pos.y) < 2.2 && (!best || score < best.d)) best = { it, d: score };
       }
     }
     const ph = !best && free && !driving ? this.pushHint() : null;
