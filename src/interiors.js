@@ -53,7 +53,7 @@ const F = {
   bed(c = 0xc84a3a) { const g = new THREE.Group(); box(1.3, 0.35, 2.1, 0x7a5232, 0, 0.18, 0, g); box(1.2, 0.18, 1.9, 0xf0e8d8, 0, 0.44, 0.05, g); box(1.22, 0.2, 1.3, c, 0, 0.5, 0.35, g); box(0.9, 0.16, 0.4, 0xffffff, 0, 0.58, -0.7, g); box(1.3, 0.8, 0.12, 0x6a4426, 0, 0.5, -1.02, g); return g; },
   table(w = 1.4, d = 0.9) { const g = new THREE.Group(); box(w, 0.1, d, 0x9a6a3a, 0, 0.75, 0, g); for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(0.08, 0.72, 0.08, 0x6a4426, sx * (w / 2 - 0.08), 0.36, sz * (d / 2 - 0.08), g); return g; },
   chair() { const g = new THREE.Group(); box(0.45, 0.06, 0.45, 0x9a6a3a, 0, 0.45, 0, g); box(0.45, 0.5, 0.06, 0x8a5a32, 0, 0.72, -0.2, g); for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(0.05, 0.45, 0.05, 0x6a4426, sx * 0.18, 0.22, sz * 0.18, g); return g; },
-  shelf(w = 1.6, items = 'jars') {
+  shelf(items = 'jars', w = 1.6) {
     const g = new THREE.Group(); box(w, 1.9, 0.4, 0x7a5232, 0, 0.95, 0, g);
     const cols = items === 'books' ? [0x8a3a2a, 0x3a5a7a, 0x5a7a3a, 0xc9963a, 0x6a4a7a] : [0xd8a040, 0xb85a3a, 0x8ab06a, 0xe8d8a8, 0x7aa0c8];
     for (const y of [0.35, 0.85, 1.35]) {

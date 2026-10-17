@@ -47,7 +47,7 @@ export const STONES = [[46, 33], [47, 33]];
 // '.' clear (no auto trees)  '~' untouched
 export const PATCHES = [
   { id: 'tutorial', c0: 2, r0: 36, rows: [
-    '~~~~~~~~~###~~~~',
+    '~~~~~~~~~~~~~~~~',
     '#T##TT#T.#T##T##',
     '##T#T##T.##T#T##',
     '######.....B....',
@@ -72,6 +72,8 @@ export const PATHS = [
   { w: 0.6, pts: [[21, 42.6, 0], [24.6, 42.6, 0]] },
   { w: 0.6, pts: [[19, 43.0, 0], [18.2, 41.4, 0], [18.4, 39.6, 0]] },
   { w: 0.8, road: true, pts: [[21, 42.6, 0], [23, 45.6, 0], [28, 46.6, 0], [34, 46.8, 0], [38.5, 45.4, 0], [41, 43.2, 0], [42.2, 40.6, 0]] },
+  // 林道: truck road from the village up a ramp along the cliff to the creek (gated until the trail boulder is moved)
+  { w: 0.8, road: true, pts: [[19, 43.0, 0], [19.1, 41.4, 0], [19.2, 38.6, 0], [18.9, 37.1, 0], [17.6, 36.6, 0], [11.6, 36.55, 1], [11.2, 35.2, 1], [12.2, 33.6, 1], [14.5, 32.2, 1], [17.5, 31.7, 1], [19.3, 31.5, 1]] },
   // tutorial corridor + ramp to level 1
   { w: 0.6, pts: [[18.4, 39.6, 0], [15, 39.5, 0], [10.5, 39.5, 0], [10.5, 37.4, 0], [9.6, 36.75, 0], [4.4, 36.75, 1], [3.3, 35.6, 1], [3.4, 33.2, 1]] },
   // level 1 west forest trail to creek puzzle
@@ -133,6 +135,7 @@ export const CAVE_DOOR = { x: 12.5, z: 9.1 };    // on level 3 face of level-4 c
 export const CAVE_MOUTH = { x: 12.5, z: 5.4 };   // on summit
 export const BELL = { x: 25.5, z: 2.6 };
 export const SPAWN = { x: 8.6, z: 46.2 };
+export const ROAD_GATE = { x: 18.1, z: 36.6 };   // across the foot of the 林道 ramp
 
 export const LANTERNS = [ // order = ascending height; positions shuffled in the grove
   { x: 13.6, z: 15.4, h: 0.9 }, { x: 5.0, z: 12.0, h: 1.3 }, { x: 14.6, z: 11.4, h: 1.75 }, { x: 7.6, z: 14.2, h: 2.25 },

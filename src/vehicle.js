@@ -50,7 +50,7 @@ export class Truck {
   constructor(game, x, z, heading = 0) {
     this.g = game;
     this.model = buildTruck(game.player.model.userData.body.children[0]?.material?.gradientMap);
-    this.model.traverse(o => o.layers.set(0));
+    this.model.traverse(o => o.layers.set(1));   // silhouette when hidden behind trees
     game.scene.add(this.model);
     this.pos = new THREE.Vector3(x, game.world.heightAt(x, z), z);
     this.heading = heading; this.speed = 0; this.driving = false; this.steer = 0;

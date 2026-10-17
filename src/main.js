@@ -27,7 +27,7 @@ async function boot() {
   scene.add(sun, sun.target);
   const amb = new THREE.HemisphereLight(0xc8d0ff, 0x7a6a4a, 1.25);
   scene.add(amb);
-  sun.layers.enableAll(); amb.layers.enableAll();
+  sun.layers.enableAll(); amb.layers.enableAll(); sun.shadow.camera.layers.enableAll();
   pr.renderer.shadowMap.autoUpdate = false;
 
   $('tload-n').textContent = '';

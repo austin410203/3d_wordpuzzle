@@ -305,6 +305,19 @@ export class Game {
       this.barricade = { m, x, z, coll: this.flags.barricade ? null : w.colliders.add({ x0: x - 1.4, x1: x + 1.4, z0: z - 0.35, z1: z + 0.35 }) };
       addI({ pos: V(x, 0, z), r: 1.6, on: () => !this.flags.barricade, label: () => this.player.pos.z < z ? '踢倒木頭' : '倒木', use: () => this.kickBarricade() });
     }
+    // ---------- 林道 gate (opens once the trail boulder has been pushed aside)
+    {
+      const x = MAP.ROAD_GATE.x * S, z = MAP.ROAD_GATE.z * S, y = w.heightAt(x + 0.6, z);
+      const g = new THREE.Group(); g.position.set(x, y, z);
+      for (const dz of [-1.7, 1.7]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.5, 0.22), P.M.timber); post.position.set(0, 0.75, dz); post.castShadow = true; g.add(post); }
+      for (const yy of [0.5, 1.05]) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 3.4), new THREE.MeshToonMaterial({ color: 0xc8402e, gradientMap: P.M.leaf.gradientMap })); bar.position.set(0, yy, 0); bar.castShadow = true; g.add(bar); const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.17, 0.5), P.M.white); stripe.position.set(0, yy, 0); g.add(stripe); }
+      const sign = P.signpost('林道'); sign.position.set(0.7, 0, 2.4); g.add(sign);
+      sc.add(g);
+      this.roadGate = { g, coll: this.flags.tutorialDone ? null : w.colliders.add({ x0: x - 0.4, x1: x + 0.4, z0: z - 2.2, z1: z + 2.2 }) };
+      this.roadGate.coll2 = this.flags.tutorialDone ? null : w.colliders.add({ x0: x - 0.6, x1: x + 0.4, z0: z + 1.6, z1: z + 3.2 });   // closes the gap to the rocks
+      if (this.flags.tutorialDone) g.children.slice(2, 6).forEach(m => m.visible = false);
+      addI({ pos: V(x + 1.2, 0, z), r: 1.6, on: () => !this.flags.tutorialDone, label: () => '林道柵欄', use: () => this.ui.say([['小禾', '「林道:車輛通行」。柵欄上掛著一張紙條:「步道口的大石頭推開之前,這裡先不開放。——楓嶺村」']], 'me') });
+    }
     // ---------- sketch easels
     for (const sp of MAP.SKETCH) {
       const x = sp.x * S, z = sp.z * S;
@@ -493,6 +506,12 @@ export class Game {
     m[id] = (m[id] || 0) + n;
     this.toast(`獲得 ${({ pinecone: '松果', berry: '野莓', mushroom: '香菇', treat: '狗餅乾' })[id]} ×${n}`);
     this.audio.leaf(); this.save();
+  }
+  openRoadGate() {
+    const rg = this.roadGate; if (!rg || !rg.coll) return;
+    this.world.colliders.remove(rg.coll); rg.coll = null; if (rg.coll2) { this.world.colliders.remove(rg.coll2); rg.coll2 = null; }
+    const bars = rg.g.children.slice(2, 6);
+    this.tween(0.8, k => bars.forEach(b => { b.rotation.x = -k * 1.4; b.position.y = (b.userData.y0 ??= b.position.y) + k * 0.6; })).then(() => bars.forEach(b => b.visible = false));
   }
   buildMill() {
     const w = this.world, sc = this.scene, M = MAP.MILL, H = (x, z) => w.heightAt(x, z);
@@ -927,6 +946,64 @@ export class Game {
     });
     w.colliders.move(b.coll, x1, z1);
   }
+  // ---- push indicators: ring under every movable boulder nearby, arrow showing where a push goes
+  ensurePushMarks() {
+    if (this.pushArrow) return;
+    const sh = new THREE.Shape(); sh.moveTo(-0.22, -0.55); sh.lineTo(0.22, -0.55); sh.lineTo(0.22, 0.05); sh.lineTo(0.5, 0.05); sh.lineTo(0, 0.6); sh.lineTo(-0.5, 0.05); sh.lineTo(-0.22, 0.05); sh.closePath();
+    const geo = new THREE.ShapeGeometry(sh); geo.rotateX(-Math.PI / 2);
+    this.pushArrow = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x6cd06a, transparent: true, opacity: 0.85, depthWrite: false }));
+    this.pushArrow.renderOrder = 5; this.pushArrow.layers.set(3); this.pushArrow.visible = false; this.scene.add(this.pushArrow);
+    const ringGeo = new THREE.RingGeometry(1.0, 1.18, 20); ringGeo.rotateX(-Math.PI / 2);
+    for (const b of this.boulders) {
+      const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, opacity: 0.0, depthWrite: false }));
+      ring.renderOrder = 4; ring.layers.set(3); this.scene.add(ring); b.ring = ring;
+    }
+  }
+  pushTarget() {
+    const p = this.player;
+    let best = null;
+    for (const b of this.boulders) {
+      if (b.sunk || b.moving) continue;
+      const [bx, bz] = this.cellXZ(b.c, b.r, b.cave);
+      const dx = bx - p.pos.x, dz = bz - p.pos.z, d = Math.hypot(dx, dz);
+      if (d > 2.1) continue;
+      const ax = Math.abs(dx) > Math.abs(dz) ? [Math.sign(dx), 0] : [0, Math.sign(dz)];
+      const perp = Math.abs(ax[0] ? dz : dx);
+      if (perp > 0.95) continue;
+      if (!best || d < best.d) best = { b, d, dir: ax, bx, bz };
+    }
+    return best;
+  }
+  pushHint() {
+    const t = this.pushTarget(); this._pt = t;
+    if (!t) return null;
+    const arrows = { '1,0': '→', '-1,0': '←', '0,1': '↓', '0,-1': '↑' }, key = arrows[t.dir.join(',')];
+    if (!this.has('gloves')) return { text: '大石頭太重了,需要工作手套', key, tone: 'need' };
+    t.ok = !!this.canPushTo(t.b, t.b.c + t.dir[0], t.b.r + t.dir[1]);
+    return t.ok ? { text: `往${key}推動石頭(朝石頭走過去)`, key, tone: 'ok' } : { text: '這個方向推不動,前面有東西擋住', key, tone: 'no' };
+  }
+  updatePushMarks(dt) {
+    this.ensurePushMarks();
+    const p = this.player, glove = this.has('gloves'), t = this._pt, tm = this.U.uTime.value;
+    for (const b of this.boulders) {
+      const [bx, bz] = this.cellXZ(b.c, b.r, b.cave);
+      const near = !b.sunk && Math.hypot(bx - p.pos.x, bz - p.pos.z) < 9;
+      const target = near ? (glove ? 0.55 + 0.25 * Math.sin(tm * 3) : 0.25) : 0;
+      b.ring.material.opacity += (target - b.ring.material.opacity) * Math.min(1, dt * 6);
+      b.ring.visible = b.ring.material.opacity > 0.02;
+      b.ring.position.set(b.m.position.x, this.world.heightAt(b.m.position.x, b.m.position.z) + 0.06, b.m.position.z);
+    }
+    const a = this.pushArrow;
+    if (t && !this.truck?.driving && this._pt === t) {
+      a.visible = true;
+      a.material.color.set(!glove ? 0x9a8a7a : t.ok ? 0x6cd06a : 0xe0503a);
+      const ex = t.bx + t.dir[0] * 1.55, ez = t.bz + t.dir[1] * 1.55;
+      const pulse = this.player.pushing ? 1.15 + 0.15 * Math.sin(tm * 14) : 1;
+      a.position.set(ex, this.world.heightAt(ex, ez) + 0.08, ez); a.scale.setScalar(pulse);
+      a.rotation.y = Math.atan2(t.dir[0], t.dir[1]) + Math.PI;
+    } else a.visible = false;
+    this._pt = null;
+  }
   canPushTo(b, nc, nr) {
     const w = this.world;
     const [x, z] = this.cellXZ(nc, nr, b.cave);
@@ -957,7 +1034,7 @@ export class Game {
         if (['creek', 'boulder'].includes(this.state.goal)) this.setGoal('chen');
       }
     }
-    if (b.patch === undefined && b.id.startsWith('tutorial') && !this.flags.tutorialDone && b.c <= 9) { this.flags.tutorialDone = 1; this.audio.solve(); this.toast('路通了!', true); if (this.state.goal === 'boulder') this.setGoal('creek'); }
+    if (b.patch === undefined && b.id.startsWith('tutorial') && !this.flags.tutorialDone && b.c <= 9) { this.flags.tutorialDone = 1; this.audio.solve(); this.toast('路通了!林道的柵欄也打開了,小藍可以開上去了。', true); this.openRoadGate(); if (this.state.goal === 'boulder') this.setGoal('creek'); }
     if (b.cave) {
       const pressed = this.plates.filter(p => this.boulders.some(o => o.cave && o.c === p.c && o.r === p.r));
       this.plates.forEach(p => { p.rune.material = pressed.includes(p) ? P.M.lanternGlow : P.M.lanternOff; });
@@ -1210,7 +1287,9 @@ export class Game {
         if (d < it.r && Math.abs((ip.y || p.pos.y) - p.pos.y) < 2.2 && (!best || d < best.d)) best = { it, d };
       }
     }
-    this.ui.prompt(best ? best.it.label() : null);
+    const ph = !best && free && !driving ? this.pushHint() : null;
+    if (ph) this.ui.prompt(ph.text, ph.key, ph.tone); else this.ui.prompt(best ? best.it.label() : null);
+    this.updatePushMarks(dt);
     if (this.quiet && Math.hypot(p.pos.x - this.quiet.pos.x, p.pos.z - this.quiet.pos.z) > 0.9) this.quiet = null;
     if (best && this.canInteract() && inp.hit('KeyE', 'Space', 'Enter')) { this.activeInter = best.it; best.it.use(); }
     if (free && inp.hit('KeyR')) this.resetPuzzle();

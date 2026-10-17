@@ -150,10 +150,11 @@ export class UI {
   }
 
   // ---------------- HUD bits
-  prompt(text) {
+  prompt(text, key = 'E', tone = '') {
     const p = $('prompt');
     if (!text) { p.classList.add('hidden'); return; }
-    $('prompt-text').textContent = text; p.classList.remove('hidden');
+    $('prompt-text').textContent = text; p.querySelector('.key').textContent = key;
+    p.dataset.tone = tone; p.classList.remove('hidden');
   }
   toast(text, gold = false) {
     const el = document.createElement('div'); el.className = 'tst' + (gold ? ' gold' : ''); el.textContent = text;
