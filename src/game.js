@@ -6,6 +6,7 @@ import { Player } from './player.js';
 import { buildCharacter, animateCharacter, buildCat, animateCat, buildDuck, buildBird, LOOKS } from './characters.js';
 import { UI } from './ui.js';
 import { Audio } from './audio.js';
+import { saves, saveUI } from './saves.js';
 import { talk, INTRO, AREAS, POSTCARD_TEXT, FISH, UPGRADES, SIGNS, ENDING, NAMES } from './story.js';
 import { PPU, PITCH } from './render.js';
 import { buildInteriors } from './interiors.js';
@@ -43,7 +44,7 @@ export class Game {
     this.shake = 0;
     this.saveT = 0;
     this.areaKey = null;
-    const raw = localStorage.getItem(SAVE_KEY);
+    const raw = saves.ls.getItem(SAVE_KEY);   // 目前的存檔欄位（saves.js）
     this.hasSave = !!raw;
     this.state = raw ? Object.assign(newState(), JSON.parse(raw)) : newState();
     this.flags = this.state.flags;
@@ -76,7 +77,11 @@ export class Game {
     this.audio.item();
     this.ui.refreshHUD(); this.save();
   }
-  setGoal(k) { this.state.goal = k; this.ui.refreshHUD(); this.save(); }
+  setGoal(k) {
+    const changed = this.state.goal !== k;
+    this.state.goal = k; this.ui.refreshHUD(); this.save();
+    if (changed && this.started) { saves.log({ k: 'goal', goal: k }); saveUI.toast(); }   // 遊玩紀錄＋「已自動存檔」
+  }
   toast(t, gold) { this.ui.toast(t, gold); }
   rand(n) { return Math.floor(Math.random() * n); }
   fishCount() { return Object.values(this.state.bagFish || {}).reduce((a, b) => a + b, 0); }
@@ -123,7 +128,7 @@ export class Game {
     s.boulders = {}; for (const b of this.boulders) s.boulders[b.id] = [b.c, b.r, b.sunk ? 1 : 0];
     s.filled = [...this.filled];
     if (this.truck) s.truck = [this.truck.pos.x, this.truck.pos.z, this.truck.heading];
-    localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+    saves.ls.setItem(SAVE_KEY, JSON.stringify(s));
   }
 
   // ======================================================================================
@@ -1094,6 +1099,7 @@ export class Game {
     p.forceMode = 'ring';
     await sleep(500);
     const golden = !!this.state.upgrades.watch;
+    saves.log({ k: 'bell', golden }); this.save(); saveUI.toast();
     this.audio.bell(golden);
     this.endingMusic = true; setTimeout(() => { if (this.audio.tracks) { this.audio.tracks.ending.currentTime = 0; } this.audio.playTrack('ending'); }, 2500);
     this.pr.uniforms.uFlash.value = 0.6; this.shake = 1.0;
@@ -1187,9 +1193,12 @@ export class Game {
     $('tload').classList.add('hidden'); $('tbtns').classList.remove('hidden');
     if (this.hasSave) { $('btn-continue').classList.remove('hidden'); $('btn-continue').focus(); } else $('btn-new').focus();
     $('btn-continue').onclick = () => this.begin(false);
+    $('btn-new').after(saveUI.button('saveBtn'));   // 標題「💾 存檔 N」
+    // 有存檔時按兩次才覆蓋（不用 confirm()）
     $('btn-new').onclick = () => {
-      if (this.hasSave && !confirm('開始新的旅程會覆蓋目前的存檔,確定嗎?')) return;
-      localStorage.removeItem(SAVE_KEY);
+      const b = $('btn-new');
+      if (this.hasSave && !b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = `再按一次：覆蓋存檔 ${saves.slot}`; return; }
+      saves.ls.removeItem(SAVE_KEY);
       if (this.hasSave) { location.reload(); return; }
       this.begin(true);
     };

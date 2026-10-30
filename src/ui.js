@@ -1,4 +1,5 @@
 // ui.js — dialogue runner, prompts, toasts, HUD, journal, portraits, fishing panel, captions
+import { saves, saveUI } from './saves.js';
 import * as THREE from 'three';
 import { NAMES, POSTCARD_TEXT, FISH, UPGRADES, GOALS } from './story.js';
 import { buildCharacter, buildCat, LOOKS, initCharacters } from './characters.js';
@@ -257,13 +258,15 @@ export class UI {
         <div class="opt">音樂 <input type="range" min="0" max="1" step="0.05" value="${a.music}" data-k="music"></div>
         <div class="opt">音效 <input type="range" min="0" max="1" step="0.05" value="${a.sfx}" data-k="sfx"></div>
         <h3>畫面</h3><div class="opt"><button id="opt-outline">描邊:${g.pr.uniforms.uOutline.value ? '開' : '關'}</button><button id="opt-shadow">陰影:${g.pr.renderer.shadowMap.enabled ? '開' : '關'}</button></div>
-        <h3>存檔</h3><div class="opt"><button id="opt-save">立即存檔</button><button id="opt-wipe">刪除存檔並重新開始</button></div>
+        <h3>存檔</h3><div class="opt"><button id="opt-save">立即存檔</button><button id="opt-slots">💾 存檔欄位（存檔 ${saves.slot}）</button><button id="opt-wipe">刪除存檔並重新開始</button></div>
         <p style="font-size:13px;color:#6a4a30">遊戲會自動存檔。操作:WASD 移動、E 互動、Shift 奔跑、Tab 手帳、R 重置附近的推石謎題、Z 望遠鏡。</p>`;
       $('jp-opts').querySelectorAll('input[type=range]').forEach(el => el.addEventListener('input', () => { g.audio.setVol(el.dataset.k, +el.value); g.saveSettings(); }));
       $('opt-outline').onclick = () => { g.pr.uniforms.uOutline.value = 1 - g.pr.uniforms.uOutline.value; this.render('opts'); };
       $('opt-shadow').onclick = () => { g.pr.renderer.shadowMap.enabled = !g.pr.renderer.shadowMap.enabled; g.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); this.render('opts'); };
       $('opt-save').onclick = () => { g.save(); this.toast('已存檔'); };
-      $('opt-wipe').onclick = () => { if (confirm('確定要刪除存檔嗎?')) { localStorage.removeItem('mapleRidgeSave'); location.reload(); } };
+      $('opt-slots').onclick = () => saveUI.open('slots');
+      // 按兩次才刪（不用 confirm()）
+      $('opt-wipe').onclick = (e) => { const b = e.currentTarget; if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = '再按一次確定刪除'; return; } saves.ls.removeItem('mapleRidgeSave'); location.reload(); };
     }
   }
   bagEntries() {

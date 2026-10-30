@@ -14,3 +14,6 @@
 
 ## 測試
 網址加上 `?debug` 會載入 `src/debug.js`(`window.D`):`D.go(x,z)` 走路、`D.press()` 互動、`D.talk()` 跳過對話、`D.soko(moves,c0,r0,cave)` 依解題器步驟推石。整條主線(信箱→貓→釣魚→工具棚→推石→溪流謎題→營地→梯子→水車→升降台→古燈→山洞謎題→鐘槌→山頂敲鐘)已用它跑過一遍。
+
+## 存檔欄位（2026-10-30，`Company/playbooks/save-system.md`）
+`src/saves.js`（共用 `src/save.js`／`src/saveui.js`）：3 個欄位，進度 `mapleRidgeSave` 存在 `eosv_mr_s{N}_mapleRidgeSave`，舊 key 第一次載入時搬進存檔 1；聲音設定 `mapleRidgeSettings` 全欄位共用。標題「💾 存檔 N」、手帳設定頁「存檔欄位」開存檔畫面（切換、匯出 .json、匯入、刪除按兩次、遊玩紀錄＝每次目標推進、敲鐘各一筆）；目標推進時跳「已自動存檔」。「新的旅程」覆蓋存檔、「刪除存檔」都改成按兩次（不用 `confirm()`）。測試：`node tools/save_test.mjs`；`python ../Company/playbooks/templates/save_system/save_e2e.py . shots/saves tools/save_legacy.json --play "…__game.begin(false); __game.setGoal('ladder')…"`。

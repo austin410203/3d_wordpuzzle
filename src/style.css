@@ -190,3 +190,6 @@ body.touch #stick { width: 112px; height: 112px; left: calc(env(safe-area-inset-
 body.touch #knob { width: 46px; height: 46px; margin: -23px; }
 body.touch #stick.on { opacity: 1; background: rgba(243,230,200,.26); }
 #prompt[data-tone=ok] .key { background: #3f7a3a; } #prompt[data-tone=no] .key { background: #a8402a; } #prompt[data-tone=need] .key { background: #7a6a5a; }
+
+/* 存檔（src/saves.js）：按兩次確定 */
+#btn-new.sure, #opt-wipe.sure { background: #c0392b !important; color: #fff !important; border-color: #c0392b !important; }
